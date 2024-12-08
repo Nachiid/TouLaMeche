@@ -1,7 +1,3 @@
-Voici une version refaite de votre fichier README avec une licence ajoutée sous votre nom :
-
----
-
 # **Projet : Test de Modules de Gestion de Séquences et Tableaux Dynamiques**
 
 ## **Description**
@@ -123,7 +119,3 @@ Copyright © 2024 NACHID. All rights reserved.
 
 Ce projet est mis à disposition pour consultation et apprentissage. Toute modification, redistribution ou utilisation commerciale du code sans autorisation expresse de l'auteur est strictement interdite.
 ```
-
---- 
-
-Ce fichier **README** est maintenant prêt à être utilisé. Il détaille clairement les fonctionnalités, les tests, et inclut une licence restrictive sous votre nom.
