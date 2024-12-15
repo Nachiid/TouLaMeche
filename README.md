@@ -1,85 +1,92 @@
-# **Projet : Test de Modules de Gestion de Séquences et Tableaux Dynamiques**
+# **Projet : Test de Modules de Gestion de Séquences, Tableaux Dynamiques et Arbre de Prédiction**
 
-## **Etat : Non-finis**
+## **Etat : En cours de développement**
 
-## **Description**
+Ce projet a pour objectif de tester et développer plusieurs modules en C pour gérer des structures de données complexes. Ces modules incluent la **gestion des séquences**, les **tableaux dynamiques**, et un **arbre de prédiction**. Le programme inclut des tests pour valider les fonctionnalités implémentées. 
 
-Ce projet a pour objectif de tester deux modules principaux en langage C : 
-1. **Gestion des séquences** : Permet la manipulation de suites de mots en utilisant une table de hachage.
-2. **Tableaux dynamiques** : Implémente une structure de tableau à capacité ajustable, adaptée aux besoins en mémoire.
-
-Les fonctionnalités principales incluent des tests automatisés pour valider l'ajout d'éléments, la gestion de la mémoire, ainsi que la recherche d'éléments dans ces structures de données.
+Actuellement, le projet est encore en construction, avec deux fonctionnalités principales restant à intégrer :
+- **Module Entrées/Sorties** pour l'exécution du programme en mode terminal (saisie et sauvegarde des données).
+- **Module d'Interface Graphique (IHM)** pour un affichage interactif utilisant GTK+.
 
 ---
 
 ## **Modules**
 
-### **1. Module Séquence**
-Gère des séquences de mots en utilisant une table de hachage pour le stockage.
+### 1. **Module Séquence**
+**Raison de sa création :**
+Le module Séquence a été conçu pour gérer des séries de mots (séquences) tout en permettant une récupération rapide des mots précédents. Cette structure est essentielle pour des systèmes de prédiction basés sur des N-grammes.
 
-#### **Fonctionnalités :**
-- Initialisation de la séquence et de la table de hachage associée.
-- Ajout de mots dans la séquence.
-- Gestion des N-grammes (groupes de mots consécutifs).
-- Récupération du dernier mot ajouté.
-- Tests de performance pour des ajouts massifs de mots.
-
----
-
-### **2. Module Tableau Dynamique**
-Implémente un tableau dynamique redimensionnable pour stocker des éléments divers.
-
-#### **Fonctionnalités :**
-- Ajout d'éléments à différentes positions du tableau.
-- Redimensionnement automatique lorsque la capacité maximale est atteinte.
-- Recherche et récupération d'éléments par index.
-- Ajout d'éléments à la fin du tableau.
-- Tests de robustesse avec des ajouts massifs d'éléments.
+**Fonctionnalités :**
+- **Gestion des séquences de mots** : Stockage et manipulation de séquences N-grammes.
+- **Initialisation** : Création d'une séquence vide pour commencer.
+- **Ajout de mots** : Ajoute des mots à une séquence et les gère efficacement.
+- **Récupération du dernier mot** : Permet d'accéder au dernier mot ajouté dans la séquence.
+- **Tests de performance** : Simulation d'ajouts massifs pour évaluer la robustesse du module.
 
 ---
 
-## **Fonctionnement**
+### 2. **Module Tableau Dynamique**
+**Raison de sa création :**
+Ce module a été développé pour offrir une structure de données flexible permettant d'ajuster automatiquement sa taille en fonction du nombre d'éléments ajoutés. Il est utilisé pour des besoins généraux de stockage dynamique.
 
-### **Tests pour le module Séquence**
-1. **Initialisation** : Vérification de la création correcte de la séquence et de la table de hachage.
-2. **Ajout de mots** : Validation que chaque mot ajouté est correctement enregistré.
-3. **Test intensif** : Ajout de milliers de mots pour s'assurer de la robustesse.
-4. **Récupération du dernier mot** : Vérification que le dernier mot ajouté peut être récupéré avec précision.
+**Fonctionnalités :**
+- **Redimensionnement automatique** : Le tableau s'adapte lorsque sa capacité maximale est atteinte.
+- **Ajout d'éléments** : Permet d'ajouter des éléments à différentes positions dans le tableau.
+- **Recherche** : Recherche rapide des éléments par leur index.
+- **Gestion des types divers** : Supporte l'ajout d'éléments de différents types (par exemple : entiers, caractères, structures).
 
 ---
 
-### **Tests pour le module Tableau Dynamique**
-1. **Création** : Validation des paramètres initiaux (taille, capacité, etc.).
-2. **Ajout d'éléments** : Ajout d'éléments divers et vérification de leur insertion correcte.
-3. **Redimensionnement** : Test du fonctionnement lors du dépassement de la capacité initiale.
-4. **Recherche d'éléments** : Vérification de l'accès aux éléments selon leur position.
-5. **Ajout en fin de tableau** : Validation du redimensionnement lors d'ajouts successifs.
+### 3. **Module Arbre de Prédiction**
+**Raison de sa création :**
+L'arbre de prédiction permet de gérer efficacement une base de données de mots et d'offrir des suggestions basées sur des séquences de mots (N-grammes). Ce module est au cœur du système de prédiction du programme.
+
+**Fonctionnalités :**
+- **Initialisation de l'arbre** : Création d'un arbre de prédiction avec une racine contenant un mot vide.
+- **Ajout des mots** : Construction de l'arbre à partir d'un dictionnaire de mots ou d'une séquence d'entrées.
+- **Prédiction de mots** : Propose le mot suivant le plus probable en fonction des séquences enregistrées.
+- **Tests de performance** : Évaluation de la capacité de l'arbre à gérer de grandes bases de données.
+
+---
+
+## **Modules en cours de développement**
+
+1. **Module Entrées/Sorties (Terminal)**  
+   **Fonctionnalité prévue** :  
+   - Gestion de la saisie et de la sauvegarde des textes en mode terminal.  
+   - Permettre à l'utilisateur de saisir un texte mot par mot avec prédiction en temps réel via l'arbre de prédiction.
+   - Enregistrer les mots dans un fichier si la prédiction ne correspond pas.  
+   **Statut :** En cours de développement.  
+
+2. **Module Interface Graphique (IHM)**  
+   **Fonctionnalité prévue** :  
+   - Création d'une interface graphique interactive en utilisant GTK+ et Glade.  
+   - Permettre à l'utilisateur de visualiser et manipuler les structures de données (séquences, arbres, tableaux dynamiques) avec une interface conviviale.  
+   **Statut :** En cours de conception.
 
 ---
 
 ## **Installation**
 
-### **Prérequis**
-- Un compilateur C (comme GCC).
-- `make` pour la gestion des builds (si un Makefile est utilisé).
+### Prérequis
+- Un compilateur C (par exemple, GCC).
+- `make` pour la gestion de la compilation (si vous utilisez un Makefile).
+- GTK+ installé (si vous voulez tester l'IHM lorsqu'elle sera implémentée).
 
-### **Étapes**
+### Compilation
 1. **Cloner le projet** :
    ```bash
-   git clone https://github.com/votre-repository.git
-   cd votre-dossier
+   git clone https://github.com/Nachiid/TouLaMeche
    ```
-
 2. **Compiler le projet** :
-   - Avec Makefile :
-     ```bash
-     make
-     ```
-   - Sans Makefile :
-     ```bash
-     gcc -o test test.c -lssl -lcrypto
-     ```
-
+   Si vous utilisez un Makefile :
+   ```bash
+   make
+   ```
+   Si vous compilez manuellement :
+   ```bash
+   gcc -o test test.c -lssl -lcrypto
+   ```
 3. **Exécuter les tests** :
    ```bash
    ./test
@@ -89,30 +96,24 @@ Implémente un tableau dynamique redimensionnable pour stocker des éléments di
 
 ## **Structure du Projet**
 
-- **`test.c`** : Contient les tests unitaires pour les modules.
-- **`hash.h`**, **`hash.c`** : Implémentation de la table de hachage.
-- **`list.h`**, **`list.c`** : Fonctions liées aux listes (si utilisées).
-- **`sequence.h`**, **`sequence.c`** : Gestion des séquences.
-- **`tableau_dyn.h`**, **`tableau_dyn.c`** : Gestion des tableaux dynamiques.
+Le projet est organisé comme suit :
+
+- **test.c** : Contient les tests pour valider les fonctionnalités des modules.
+- **sequence.h**, **sequence.c** : Gestion des séquences de mots (N-grammes).
+- **tableau_dyn.h**, **tableau_dyn.c** : Gestion des tableaux dynamiques.
+- **arbre_prediction.h**, **arbre_prediction.c** : Implémentation de l'arbre de prédiction.
+- **entrees_sorties.h**, **entrees_sorties.c** (en cours) : Gestion des saisies utilisateur et des fichiers.
+- **interface_gtk.h**, **interface_gtk.c** (en cours) : Création de l'IHM avec GTK+.
 
 ---
 
 ## **Tests**
 
-Les tests automatisés valident :
-- La création des structures (tableaux dynamiques, séquences, etc.).
-- L'ajout, la recherche et la suppression d'éléments.
-- Le comportement des structures sous des charges importantes.
-
----
-
-## **Contribution**
-
-Les contributions sont encouragées ! Vous pouvez :
-- Signaler un problème via une **issue**.
-- Proposer des améliorations via une **pull request**.
-
----
+Les tests incluent :
+1. **Module Séquence** : Validation des fonctionnalités de stockage et récupération des séquences.
+2. **Module Tableau Dynamique** : Tests de redimensionnement et de recherche d'éléments.
+3. **Module Arbre de Prédiction** : Tests de précision et de performance pour la prédiction des mots.
+4. **Tests intensifs** : Vérification de la robustesse avec de grandes quantités de données.
 
 ## **Licence**
 
