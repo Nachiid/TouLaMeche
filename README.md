@@ -1,5 +1,7 @@
 # **Projet : Test de Modules de Gestion de Séquences et Tableaux Dynamiques**
 
+## **Etat : Non-finis**
+
 ## **Description**
 
 Ce projet a pour objectif de tester deux modules principaux en langage C : 
