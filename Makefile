@@ -1,43 +1,69 @@
-# Options de compilation
-CC = gcc
-CFLAGS = -Wall -Wextra -g
-LDFLAGS = -lm
+########################################################################
+# Projet : TouLaMeche
+# Description : Makefile généraliste pour compilation du projet
+########################################################################
 
-# Objets nécessaires pour le programme complet
-OBJ = main.o sequence.o tableau_dyn.o arbre_prediction.o test.o error.o
-# Bibliothèques fournies (en x86_64)
-LIBS = list_x86_64.o hash_x86_64.o
+# Compilateur
+CC := gcc
 
-# Cible principale
-program: $(OBJ)
-	$(CC) $(OBJ) $(LIBS) -o program $(LDFLAGS)
+# Flags de compilation
+CFLAGS := -Wall -Wextra -Werror -std=c11 -g
 
-# --- Règles de compilation des objets ---
+# Nom de l'exécutable
+TARGET := main
 
-error.o: error.c error.h
-	$(CC) $(CFLAGS) -c error.c
+# --- CORRECTION 1 : On exclut les fichiers de test du wildcard ---
+SRC := $(filter-out test_hash_exemple.c, $(wildcard *.c))
 
-sequence.o: sequence.c sequence.h error.h hash.h
-	$(CC) $(CFLAGS) -c sequence.c
+# Objets générés automatiquement
+OBJ := $(SRC:.c=.o)
 
-tableau_dyn.o: tableau_dyn.c tableau_dyn.h error.h
-	$(CC) $(CFLAGS) -c tableau_dyn.c
+# Objets externes (NE PAS SUPPRIMER)
+EXT_OBJ := hash_x86_64.o list_x86_64.o
 
-arbre_prediction.o: arbre_prediction.c arbre_prediction.h sequence.h tableau_dyn.h
-	$(CC) $(CFLAGS) -c arbre_prediction.c
+# Dépendances automatiques
+DEP := $(OBJ:.o=.d)
 
-test.o: test.c test.h sequence.h
-	$(CC) $(CFLAGS) -c test.c
+########################################################################
+# Règles principales
+########################################################################
 
-main.o: main.c sequence.h test.h
-	$(CC) $(CFLAGS) -c main.c
+all: $(TARGET)
 
-# --- Cible spéciale pour TESTER UNIQUEMENT SEQUENCE ---
-# Cette cible compile uniquement ce qui est nécessaire pour tester la séquence
-test_seq: main.o sequence.o test.o error.o
-	$(CC) main.o sequence.o test.o error.o $(LIBS) -o test_seq $(LDFLAGS)
-	@echo "Tapez './test_seq' pour lancer les tests du module sequence."
+# --- CORRECTION 2 : Ajout de -lm à la fin pour sqrt ---
+$(TARGET): $(OBJ) $(EXT_OBJ)
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
-# Nettoyage
-clean :
-	rm main.o	sequence.o	error.o	tableau_dyn.o	tableau_dyn.h.gch	arbre_prediction.o	arbre_prediction.h.gch	test.o program
+########################################################################
+# Compilation automatique
+########################################################################
+
+%.o: %.c
+	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
+
+########################################################################
+# Exécution
+########################################################################
+
+run: $(TARGET)
+	./$(TARGET)
+
+########################################################################
+# Nettoyage (NON TOUCHÉ)
+########################################################################
+
+clean:
+	rm -f $(OBJ) $(DEP)
+
+fclean: clean
+	rm -f $(TARGET)
+
+re: fclean all
+
+########################################################################
+# Inclusion des dépendances
+########################################################################
+
+-include $(DEP)
+
+.PHONY: all run clean fclean re

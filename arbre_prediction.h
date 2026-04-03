@@ -1,9 +1,12 @@
 /************************************************************************
   Nom du fichier : arbre_prediction.h
-  Description : Déclaration du module pour l'arbre de prédiction.
+=============================================================
+  Description : Contient les fonctions du module d'arbre de prédiction
+=============================================================
   Auteur : Nachid Ayman
+=============================================================
 ************************************************************************/
-
+/*
 #ifndef ARBRE_PREDICTION_H
 #define ARBRE_PREDICTION_H
 
@@ -51,3 +54,5 @@ void detruire_arbre(struct Noeud *noeud);
 void afficherArbre(const struct Noeud *racine, int niveau);
 
 #endif // ARBRE_PREDICTION_H
+
+*/

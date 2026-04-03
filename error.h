@@ -3,7 +3,10 @@
 =============================================================
   Description : Gestion centralisée des erreurs du projet
 =============================================================
+  Auteur : Nachid Ayman
+=============================================================
 ************************************************************************/
+
 
 #ifndef ERROR_H
 #define ERROR_H
@@ -49,7 +52,7 @@ void error_print(error_code err, const char *module, const char *msg);
 void error_debug(error_code err, const char *file, int line, const char *msg);
 
 
-/* Macro pratique pour debug */
+/* Macro pour debug */
 #define ERROR_DEBUG(err,msg) error_debug(err,__FILE__,__LINE__,msg)
 
 #endif

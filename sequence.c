@@ -19,109 +19,133 @@
 #include "sequence.h"
 #include "test.h"
 
-// Initialise une sequence avec des mots vides
-void sequence_initialise(Sequence *seq, int n, struct strhash_table *ht)
+// Alloue et initialise une séquence de taille n+1
+Sequence *sequence_creer(int n, struct strhash_table *ht)
 {
-    // Vérifier les pointeurs d'entrée
-    if (seq == NULL || ht == NULL)
+    if (ht == NULL)
+        return NULL;
+
+    // Allocation de la structure
+    Sequence *seq = malloc(sizeof(Sequence));
+    if (seq == NULL)
     {
-        ERROR_DEBUG(ERR_NULL_POINTER, "Pointeur seq ou ht est NULL dans sequence_initialise");
-        return;
+        error_print(ERR_ALLOC, "SEQUENCE", "Echec malloc structure Sequence");
+        return NULL;
     }
+
     // Ajout du mot vide dans la table de hachage
-    char *adresse = strhash_wordAdd(ht, "");
-    if (adresse == NULL)
-    {
-        error_print(ERR_HASH, "SEQUENCE", "Echec de strhash_wordAdd pour le mot vide");
-        return;
-    }
-    // Configuration de la structure
+    char *adresse_vide = strhash_wordAdd(ht, "");
+
+    // Initialisation des champs
     seq->taille_max = n + 1;
     seq->position = 0;
-    // Allocation avec gestion d'erreur
+    seq->iterateur = 0;
+
+    // Allocation du tableau de mots
     seq->mots = malloc(seq->taille_max * sizeof(char *));
     if (seq->mots == NULL)
     {
-        ERROR_DEBUG(ERR_ALLOC, "Allocation du tableau de mots de la sequence echouee");
-        return;
+        free(seq);
+        return NULL;
     }
-    //  Initialisation du contenu
+
+    // Remplissage initial avec le mot vide
     for (int i = 0; i < seq->taille_max; i++)
     {
-        seq->mots[i] = adresse;
-        assert(seq->mots[i] != NULL);
+        seq->mots[i] = adresse_vide;
     }
+
+    return seq;
 }
 
-// Initialise l'itérateur pour parcourir la sequence
+// Positionne l'itérateur juste après la position courante
 void sequence_itStart(Sequence *seq)
 {
-    seq->iterateur = (seq->position + 1) % (seq->taille_max); // Positionne l'itérateur après la position courante
-    assert(seq->iterateur < seq->taille_max);               // Vérifie que l'itérateur reste dans les limites
+    seq->iterateur = (seq->position + 1) % (seq->taille_max);
+    assert(seq->iterateur < seq->taille_max);
 }
 
-// Retourne le mot courant pointé par l'itérateur, puis avance l'itérateur
+// Retourne le mot courant et avance l'itérateur
 const char *sequence_itNext(Sequence *seq)
 {
-    // Vérifier que la séquence existe
     if (seq == NULL)
     {
         ERROR_DEBUG(ERR_NULL_POINTER, "Tentative de lecture sur une Sequence NULL");
-        return ""; // On retourne une chaîne vide pour éviter un crash plus loin
+        return "";
     }
-    // Récupération du mot
+
     char *mot = seq->mots[seq->iterateur];
-    // Avancée de l'itérateur
     seq->iterateur = (seq->iterateur + 1) % (seq->taille_max);
-    // Gestion d'erreur
+
     if (mot == NULL)
     {
         ERROR_DEBUG(ERR_INTERNAL, "Un pointeur NULL a ete trouve dans le tableau de mots");
         return "";
     }
+
     return mot;
 }
 
-// Vérifie si l'itérateur a atteint la fin du tableau N_gramme
+// Retourne 1 si l'itérateur n'a pas encore atteint la position courante
 int sequence_itHasNext(Sequence *seq)
 {
-    return (seq->iterateur != seq->position); // Retourne 0 si l'itérateur est revenu à la position initiale
+    return (seq->iterateur != seq->position);
 }
 
-// Ajoute un nouveau mot à la sequence à la position courante
+// Insère un mot à la position courante et avance circulairement
 void sequence_pushWord(Sequence *seq, const char *wordi, struct strhash_table *ht)
 {
-    seq->mots[seq->position] = strhash_wordAdd(ht, wordi);   // Ajoute le mot à la table de hachage
-    seq->position = (seq->position + 1) % (seq->taille_max); // Avance circulairement
-    assert(seq->position < seq->taille_max);                 // Vérifie la validité de la position
+    seq->mots[seq->position] = strhash_wordAdd(ht, wordi);
+    seq->position = (seq->position + 1) % (seq->taille_max);
+    assert(seq->position < seq->taille_max);
 }
 
-// Retourne le mot à la position courante de la sequence
+// Retourne le mot à la position courante
 const char *sequence_nextWord(Sequence *seq)
 {
     return seq->mots[seq->position];
 }
 
+// Libère la mémoire de la séquence
 void sequence_detruire(Sequence *seq)
 {
-    if (seq != NULL)
+    if (seq == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "sequence_detruire called with NULL pointer");
+        return;
+    }
+
+    if (seq->mots == NULL)
+    {
+        ERROR_DEBUG(ERR_SEQUENCE, "sequence->mots is NULL, skipping free");
+    }
+    else
     {
         free(seq->mots);
         seq->mots = NULL;
     }
+
+    // Réinitialisation des champs avant libération
+    seq->taille_max = 0;
+    seq->position = 0;
+    seq->iterateur = 0;
+
+    free(seq);
+
+    return;
 }
 
-// Affiche le contenu actuel de la sequence, séparé par des "/"
+// Affiche les mots non vides de la séquence séparés par " / "
 void sequence_print(Sequence *seq)
 {
     sequence_itStart(seq);
-    int premier_mot_affiche = 0; // Pour savoir si on doit mettre un "/"
+    int premier_mot_affiche = 0;
 
     while (sequence_itHasNext(seq))
     {
         const char *mot = sequence_itNext(seq);
 
-        // On n'affiche que si le mot n'est pas la chaîne vide d'initialisation
+        // Ignore les mots vides d'initialisation
         if (mot[0] != '\0')
         {
             if (premier_mot_affiche)
@@ -135,19 +159,20 @@ void sequence_print(Sequence *seq)
     printf("\n");
 }
 
-// Construit une chaîne de caractères contenant les mots de la sequence
+// Retourne les mots de la séquence concaténés dans un buffer statique
 char *sequence_printInTab(Sequence *seq)
 {
-    static char sequence[256] = ""; // Tableau statique pour stocker la chaîne
-    sequence[0] = '\0';             // Réinitialise la chaîne
+    static char sequence[256] = "";
+    sequence[0] = '\0';
 
-    sequence_itStart(seq); // Initialise l'itérateur
+    sequence_itStart(seq);
 
-    // Concatène chaque mot dans la chaîne avec un espace
+    // Concatène chaque mot suivi d'un espace
     while (sequence_itHasNext(seq))
     {
         strcat(sequence, sequence_itNext(seq));
         strcat(sequence, " ");
     }
-    return sequence; // Retourne la chaîne construite
+
+    return sequence;
 }

@@ -1,5 +1,5 @@
 /************************************************************************
-  Nom du fichier : sequence.c
+  Nom du fichier : sequence.h
 =============================================================
   Description : Contient les fonctions du module sequence
 =============================================================
@@ -13,51 +13,48 @@
 #include "list.h"
 #include "hash.h"
 
-/**
- * Structure représentant une séquence circulaire de mots (N-gramme).
- * L'encapsulation permet de gérer plusieurs séquences indépendamment.
- */
+// Séquence circulaire de mots (N-gramme)
 typedef struct
 {
-    char **mots;    // Tableau de pointeurs vers les mots stockés dans la table de hachage
-    int taille_max; // Capacité totale du tableau (N + 1 pour la gestion du buffer circulaire)
-    int position;   // Indice d'écriture actuel
-    int iterateur;  // Indice utilisé pour le parcours de la séquence
+  char **mots;    // Tableau de pointeurs vers les mots (stockés dans la table de hachage)
+  int taille_max; // Capacité totale du tableau (N + 1)
+  int position;   // Indice d'écriture courant
+  int iterateur;  // Indice de parcours courant
 } Sequence;
 
-/* --- Fonctions de gestion de la structure --- */
+/* --- Gestion de la structure --- */
 
-// Alloue la mémoire et initialise la séquence avec des chaînes vides
-void sequence_initialise(Sequence *seq, int n, struct strhash_table *ht);
+// Alloue et initialise une séquence de taille n+1
+Sequence *sequence_creer(int n, struct strhash_table *ht);
 
-// Libère la mémoire allouée pour le tableau de mots
+// Libère la mémoire de la séquence
 void sequence_detruire(Sequence *seq);
 
-/* --- Fonctions de modification --- */
+/* --- Modification --- */
 
-// Ajoute un mot à la séquence et avance le curseur d'écriture de manière circulaire
+// Insère un mot à la position courante et avance circulairement
 void sequence_pushWord(Sequence *seq, const char *wordi, struct strhash_table *ht);
 
-/* --- Fonctions d'accès et de parcours (Itérateur) --- */
+/* --- Itérateur --- */
 
-// Positionne l'itérateur au début de la séquence logique
+// Positionne l'itérateur juste après la position courante
 void sequence_itStart(Sequence *seq);
 
-// Vérifie s'il reste des mots à parcourir avec l'itérateur
+// Retourne 1 si l'itérateur n'a pas encore atteint la position courante
 int sequence_itHasNext(Sequence *seq);
 
-// Retourne le mot pointé par l'itérateur et passe au suivant
+// Retourne le mot courant et avance l'itérateur
 const char *sequence_itNext(Sequence *seq);
 
-// Retourne le mot situé à la position actuelle du curseur d'écriture
+// Retourne le mot à la position courante
 const char *sequence_nextWord(Sequence *seq);
 
-/* --- Fonctions d'affichage et de formatage --- */
+/* --- Affichage --- */
 
-// Affiche la séquence sur la sortie standard (format: mot1 / mot2 / ...)
+// Affiche les mots non vides de la séquence séparés par " / "
 void sequence_print(Sequence *seq);
 
-// Retourne une représentation textuelle de la séquence sous forme de chaîne
+// Retourne les mots de la séquence concaténés dans un buffer statique
 char *sequence_printInTab(Sequence *seq);
 
 #endif /* _SEQUENCE_H */

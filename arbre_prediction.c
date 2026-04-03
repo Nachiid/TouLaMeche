@@ -1,9 +1,12 @@
 /************************************************************************
   Nom du fichier : arbre_prediction.c
-  Description : Déclaration du module pour l'arbre de prédiction.
+=============================================================
+  Description : Contient les fonctions du module d'arbre de prédiction
+=============================================================
   Auteur : Nachid Ayman
+=============================================================
 ************************************************************************/
-
+/*
 // #define NDEBUG
 #include <assert.h>
 #include <string.h>
@@ -230,3 +233,6 @@ void afficherArbre(const struct Noeud *racine, int hauteur) {
         afficherArbre(noeud_fils, hauteur + 1);  // Appel récursif pour afficher les sous-nœuds avec une hauteur supérieur
     }
 }
+
+
+*/

@@ -1,6 +1,15 @@
+/************************************************************************
+  Nom du fichier : entree_sortie.c
+=============================================================
+  Description : Contient les fonctions du module entree_sortie
+=============================================================
+  Auteur : Nachid Ayman
+=============================================================
+************************************************************************/
+/*
 #include <stdio.h>
 #include "entree_sortie.h"
-#include "sequence.h" // Inclusion du fichier de la séquence de mots
+#include "sequence.h"
 
 int saisieTexte(const char *fichier_texte)
 {
@@ -89,3 +98,5 @@ int Ajout_texte(const char *fichier_texte)
 
     return 0;
 }
+
+*/

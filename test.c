@@ -18,113 +18,114 @@
 #include "tableau_dyn.h"
 #include "arbre_prediction.h"
 
-
 // Test du module sequence
+
 int test_sequence()
 {
-    // Création des structures nécessaires
-    struct strhash_table *ht = strhash_create(ENTREE);
-    struct strhash_stat hstat;
-    const char *dernierMot = NULL;
-    Sequence seq;
+  // Création des structures nécessaires
+  struct strhash_table *ht = strhash_create(ENTREE);
+  struct strhash_stat hstat;
+  const char *dernierMot = NULL;
 
-    // Vérification de la création de la table
-    if (ht == NULL)
-    {
-        error_print(ERR_HASH, "TEST", "Erreur lors de la création de la table de hachage.");
-        return 1;
-    }
+  // Vérification de la création de la table
+  if (ht == NULL)
+  {
+    error_print(ERR_HASH, "TEST", "Erreur lors de la création de la table de hachage.");
+    return 1;
+  }
 
-    // Initialisation de la sequence (N-gramme de taille 3)
-    sequence_initialise(&seq, 3, ht);
+  // Initialisation de la sequence (N-gramme de taille 3)
+  Sequence *seq = sequence_creer(3, ht);
 
-    // Test de nombre de mot après initialisation (doit contenir le mot vide "")
-    strhash_analyse(ht, &hstat);
-    if (hstat.nbWord != 1U)
-    {
-        fprintf(stderr, "2 - Erreur dans sequence_initialise - Mots dans la table : %d (attendu : 1)\n", hstat.nbWord);
-        sequence_detruire(&seq);
-        strhash_free(ht);
-        return 1;
-    }
-
-    // Test que le mot actuel est bien le mot vide initial
-    dernierMot = sequence_nextWord(&seq);
-    if (strcmp(dernierMot, "") != 0)
-    {
-        fprintf(stderr, "3 - Erreur : le mot initial devrait être vide, reçu : [%s]\n", dernierMot);
-        sequence_detruire(&seq);
-        strhash_free(ht);
-        return 1;
-    }
-
-    // Test d'ajout de 4 mots (pour une séquence de taille 3)
-    // On s'attend à ce que TEST0 disparaisse et qu'il reste TEST1 TEST2 TEST3
-    char wordi[256];
-    for (int i = 0; i < 4; i++)
-    {
-        sprintf(wordi, "TEST%d", i);
-        sequence_pushWord(&seq, wordi, ht); // Remplace addWord + progress
-    }
-
-    // Test du contenu de la séquence
-    char *resultat = sequence_printInTab(&seq);
-    if (strcmp(resultat, "TEST1 TEST2 TEST3 ") != 0) // Note l'espace final de ta fonction printInTab
-    {
-        fprintf(stderr, "4 - Erreur contenu sequence.\nAttendu : TEST1 TEST2 TEST3 \nAffiché  : %s\n", resultat);
-        sequence_detruire(&seq);
-        strhash_free(ht);
-        return 1;
-    }
-
-    // Réinitialisation pour test intensif
-    strhash_reset(ht);
-    sequence_detruire(&seq); // On libère l'ancienne
-    sequence_initialise(&seq, 3, ht); // On en refait une propre
-
-    // Test intensif : 10 000 ajouts
-    for (int i = 0; i < 10000; i++)
-    {
-        sprintf(wordi, "TEST%d", i);
-        sequence_pushWord(&seq, wordi, ht);
-
-        // Vérification immédiate du dernier mot ajouté
-        dernierMot = sequence_nextWord(&seq);
-        
-        // Attention : après pushWord, sequence_nextWord pointe sur la case vide suivante (initialisée à "")
-        // Pour avoir le mot qu'on vient de poser, il faudrait regarder l'index (pos - 1)
-        // Mais testons si le mot est bien présent via l'itérateur à la fin du cycle
-    }
-
-    //  Test final après 10 000 ajouts
-    // Les 3 derniers mots doivent être TEST9997 TEST9998 TEST9999
-    resultat = sequence_printInTab(&seq);
-    if (strcmp(resultat, "TEST9997 TEST9998 TEST9999 ") != 0)
-    {
-        fprintf(stderr, "6 - Erreur test intensif.\nAttendu : TEST9997 TEST9998 TEST9999 \nAffiché  : %s\n", resultat);
-        sequence_detruire(&seq);
-        strhash_free(ht);
-        return 1;
-    }
-
-    //  Vérification du nombre de mots uniques dans la table de hachage
-    strhash_analyse(ht, &hstat);
-    if (hstat.nbWord != 10001)
-    {
-        fprintf(stderr, "7 - Erreur : nbWord dans ht = %d (attendu : 10001)\n", hstat.nbWord);
-        sequence_detruire(&seq);
-        strhash_free(ht);
-        return 1;
-    }
-
-    // Nettoyage final
-    sequence_detruire(&seq);
+  // Test de nombre de mot après initialisation (doit contenir le mot vide "")
+  strhash_analyse(ht, &hstat);
+  if (hstat.nbWord != 1U)
+  {
+    fprintf(stderr, "2 - Erreur dans sequence_initialise - Mots dans la table : %d (attendu : 1)\n", hstat.nbWord);
+    sequence_detruire(seq);
     strhash_free(ht);
+    return 1;
+  }
 
-    printf("Tests du module Sequence : REUSSIS\n");
-    return 0;
+  // Test que le mot actuel est bien le mot vide initial
+  dernierMot = sequence_nextWord(seq);
+  if (strcmp(dernierMot, "") != 0)
+  {
+    fprintf(stderr, "3 - Erreur : le mot initial devrait être vide, reçu : [%s]\n", dernierMot);
+    sequence_detruire(seq);
+    strhash_free(ht);
+    return 1;
+  }
+
+  // Test d'ajout de 4 mots (pour une séquence de taille 3)
+  // On s'attend à ce que TEST0 disparaisse et qu'il reste TEST1 TEST2 TEST3
+  char wordi[256];
+  for (int i = 0; i < 4; i++)
+  {
+    sprintf(wordi, "TEST%d", i);
+    sequence_pushWord(seq, wordi, ht); // Remplace addWord + progress
+  }
+
+  // Test du contenu de la séquence
+  char *resultat = sequence_printInTab(seq);
+  if (strcmp(resultat, "TEST1 TEST2 TEST3 ") != 0) // Note l'espace final de ta fonction printInTab
+  {
+    fprintf(stderr, "4 - Erreur contenu sequence.\nAttendu : TEST1 TEST2 TEST3 \nAffiché  : %s\n", resultat);
+    sequence_detruire(seq);
+    strhash_free(ht);
+    return 1;
+  }
+
+  // Réinitialisation pour test intensif
+  strhash_reset(ht);
+  sequence_detruire(seq);          // On libère l'ancienne
+  seq = sequence_creer(3, ht);
+
+  // Test intensif : 10 000 ajouts
+  for (int i = 0; i < 10000; i++)
+  {
+    sprintf(wordi, "TEST%d", i);
+    sequence_pushWord(seq, wordi, ht);
+
+    // Vérification immédiate du dernier mot ajouté
+    dernierMot = sequence_nextWord(seq);
+
+    // Attention : après pushWord, sequence_nextWord pointe sur la case vide suivante (initialisée à "")
+    // Pour avoir le mot qu'on vient de poser, il faudrait regarder l'index (pos - 1)
+    // Mais testons si le mot est bien présent via l'itérateur à la fin du cycle
+  }
+
+  //  Test final après 10 000 ajouts
+  // Les 3 derniers mots doivent être TEST9997 TEST9998 TEST9999
+  resultat = sequence_printInTab(seq);
+  if (strcmp(resultat, "TEST9997 TEST9998 TEST9999 ") != 0)
+  {
+    fprintf(stderr, "6 - Erreur test intensif.\nAttendu : TEST9997 TEST9998 TEST9999 \nAffiché  : %s\n", resultat);
+    sequence_detruire(seq);
+    strhash_free(ht);
+    return 1;
+  }
+
+  //  Vérification du nombre de mots uniques dans la table de hachage
+  strhash_analyse(ht, &hstat);
+  if (hstat.nbWord != 10001)
+  {
+    fprintf(stderr, "7 - Erreur : nbWord dans ht = %d (attendu : 10001)\n", hstat.nbWord);
+    sequence_detruire(seq);
+    strhash_free(ht);
+    return 1;
+  }
+
+  // Nettoyage final
+  sequence_detruire(seq);
+  strhash_free(ht);
+
+  printf("Tests du module Sequence : REUSSIS\n");
+  return 0;
 }
-/*
+
+
+
 // Fonction de recherche
 int rechercheInt_TabD(const void *element_recherche, const void *element_TabD)
 {
@@ -160,7 +161,7 @@ int test_TabD()
   // Création du tableau dynamique
   struct table_D *tableau1 = creer_TabD(20, 2); // Taille max initiale = 20, facteur de redimensionnement = 2.
   int i = 20, i1 = 2, i3 = 1;
-  char c = 'A', c1 = '1', c2 = '2';
+  char c = 'A', c2 = '2';
   int position;
 
   // Vérifie que le tableau a bien été créé
@@ -300,7 +301,7 @@ int test_TabD()
   }
 
   // Ajout de l'entier 1 dans la fin du tableau
-  int t = tableau1->taille, t_max = tableau1->taille_max;
+  int t = tableau1->taille;
   i1 = 10;
   ptr = &i1;
   ajoutenDernier_TabD(tableau1, ptr);
@@ -320,10 +321,13 @@ int test_TabD()
   }
 
   detruire_TabD(tableau1);
+
+  printf("Tests du module tableau dynamique : REUSSIS\n");
   return 0;
 }
 
-// Test du module tableau dynamique
+/*
+// Test du module arbre de prediction
 int test_AP()
 {
 
