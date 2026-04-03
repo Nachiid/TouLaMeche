@@ -13,110 +13,140 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "error.h"
 #include "hash.h"
 #include "list.h"
 #include "sequence.h"
 #include "test.h"
 
-// Tableau de séquence N-gramme de taille Lg_N_gramme + 1
-static char *N_gramme[Lg_N_gramme + 1]; 
-
-// Itérateur et position courante dans le tableau N_gramme
-static int iterateur, position;
-
-// Initialise le tableau N_gramme avec des mots vides
-void sequence_initialise(struct strhash_table *ht)
+// Initialise une sequence avec des mots vides
+void sequence_initialise(Sequence *seq, int n, struct strhash_table *ht)
 {
-    // Ajoute une chaîne vide à la table de hachage et récupère son adresse
+    // Vérifier les pointeurs d'entrée
+    if (seq == NULL || ht == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Pointeur seq ou ht est NULL dans sequence_initialise");
+        return;
+    }
+    // Ajout du mot vide dans la table de hachage
     char *adresse = strhash_wordAdd(ht, "");
     if (adresse == NULL)
     {
-        perror("Erreur : création de la table strhash_wordAdd() échouée");
+        error_print(ERR_HASH, "SEQUENCE", "Echec de strhash_wordAdd pour le mot vide");
+        return;
     }
-
-    // Initialise chaque entrée de N_gramme avec cette adresse
-    for (int i = 0; i < Lg_N_gramme + 1; i++)
+    // Configuration de la structure
+    seq->taille_max = n + 1;
+    seq->position = 0;
+    // Allocation avec gestion d'erreur
+    seq->mots = malloc(seq->taille_max * sizeof(char *));
+    if (seq->mots == NULL)
     {
-        N_gramme[i] = adresse;
-        assert(N_gramme[i] != NULL); // Vérifie que l'initialisation a réussi
+        ERROR_DEBUG(ERR_ALLOC, "Allocation du tableau de mots de la sequence echouee");
+        return;
     }
-
-    position = 0; // Position initiale dans le tableau
+    //  Initialisation du contenu
+    for (int i = 0; i < seq->taille_max; i++)
+    {
+        seq->mots[i] = adresse;
+        assert(seq->mots[i] != NULL);
+    }
 }
 
-// Initialise l'itérateur pour parcourir le tableau N_gramme
-void sequence_itStart(void)
+// Initialise l'itérateur pour parcourir la sequence
+void sequence_itStart(Sequence *seq)
 {
-    iterateur = (position + 1) % (Lg_N_gramme + 1); // Positionne l'itérateur après la position courante
-    assert(iterateur < Lg_N_gramme + 1); // Vérifie que l'itérateur reste dans les limites
+    seq->iterateur = (seq->position + 1) % (seq->taille_max); // Positionne l'itérateur après la position courante
+    assert(seq->iterateur < seq->taille_max);               // Vérifie que l'itérateur reste dans les limites
 }
 
 // Retourne le mot courant pointé par l'itérateur, puis avance l'itérateur
-const char *sequence_itNext(void)
+const char *sequence_itNext(Sequence *seq)
 {
-    char *mot = N_gramme[iterateur];
-    iterateur = (iterateur + 1) % (Lg_N_gramme + 1); // Avance à la position suivante de manière circulaire
-
+    // Vérifier que la séquence existe
+    if (seq == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Tentative de lecture sur une Sequence NULL");
+        return ""; // On retourne une chaîne vide pour éviter un crash plus loin
+    }
+    // Récupération du mot
+    char *mot = seq->mots[seq->iterateur];
+    // Avancée de l'itérateur
+    seq->iterateur = (seq->iterateur + 1) % (seq->taille_max);
+    // Gestion d'erreur
     if (mot == NULL)
     {
-        perror("Erreur : affectation d'une valeur NULL au mot");
+        ERROR_DEBUG(ERR_INTERNAL, "Un pointeur NULL a ete trouve dans le tableau de mots");
+        return "";
     }
     return mot;
 }
 
 // Vérifie si l'itérateur a atteint la fin du tableau N_gramme
-int sequence_itHasNext(void)
+int sequence_itHasNext(Sequence *seq)
 {
-    return (iterateur != position); // Retourne 0 si l'itérateur est revenu à la position initiale
+    return (seq->iterateur != seq->position); // Retourne 0 si l'itérateur est revenu à la position initiale
 }
 
-// Ajoute un nouveau mot au tableau N_gramme à la position courante
-void sequence_addWord(const char *wordi, struct strhash_table *ht)
+// Ajoute un nouveau mot à la sequence à la position courante
+void sequence_pushWord(Sequence *seq, const char *wordi, struct strhash_table *ht)
 {
-    N_gramme[position] = strhash_wordAdd(ht, wordi); // Ajoute le mot à la table de hachage
+    seq->mots[seq->position] = strhash_wordAdd(ht, wordi);   // Ajoute le mot à la table de hachage
+    seq->position = (seq->position + 1) % (seq->taille_max); // Avance circulairement
+    assert(seq->position < seq->taille_max);                 // Vérifie la validité de la position
 }
 
-// Retourne le mot à la position courante du tableau N_gramme
-const char *sequence_nextWord(void)
+// Retourne le mot à la position courante de la sequence
+const char *sequence_nextWord(Sequence *seq)
 {
-    return N_gramme[position];
+    return seq->mots[seq->position];
 }
 
-// Fait avancer la position dans le tableau N_gramme pour intégrer un nouveau mot
-void sequence_progress(void)
+void sequence_detruire(Sequence *seq)
 {
-    position = (position + 1) % (Lg_N_gramme + 1); // Avance circulairement
-    assert(position < Lg_N_gramme + 1); // Vérifie la validité de la position
-}
-
-// Affiche le contenu actuel du tableau N_gramme, séparé par des "/"
-void sequence_print(void)
-{
-    sequence_itStart(); // Initialise l'itérateur
-    const char *mot = sequence_itNext(); // Récupère le premier mot
-    printf("%s", mot);
-
-    // Parcourt et affiche les mots suivants
-    while (sequence_itHasNext())
+    if (seq != NULL)
     {
-        mot = sequence_itNext();
-        printf("/ %s", mot);
+        free(seq->mots);
+        seq->mots = NULL;
     }
-    printf("\n"); // Nouvelle ligne après l'affichage
 }
 
-// Construit une chaîne de caractères contenant les mots du tableau N_gramme
-char *sequence_printInTab(void)
+// Affiche le contenu actuel de la sequence, séparé par des "/"
+void sequence_print(Sequence *seq)
+{
+    sequence_itStart(seq);
+    int premier_mot_affiche = 0; // Pour savoir si on doit mettre un "/"
+
+    while (sequence_itHasNext(seq))
+    {
+        const char *mot = sequence_itNext(seq);
+
+        // On n'affiche que si le mot n'est pas la chaîne vide d'initialisation
+        if (mot[0] != '\0')
+        {
+            if (premier_mot_affiche)
+            {
+                printf(" / ");
+            }
+            printf("%s", mot);
+            premier_mot_affiche = 1;
+        }
+    }
+    printf("\n");
+}
+
+// Construit une chaîne de caractères contenant les mots de la sequence
+char *sequence_printInTab(Sequence *seq)
 {
     static char sequence[256] = ""; // Tableau statique pour stocker la chaîne
-    sequence[0] = '\0'; // Réinitialise la chaîne
+    sequence[0] = '\0';             // Réinitialise la chaîne
 
-    sequence_itStart(); // Initialise l'itérateur
+    sequence_itStart(seq); // Initialise l'itérateur
 
     // Concatène chaque mot dans la chaîne avec un espace
-    while (sequence_itHasNext())
+    while (sequence_itHasNext(seq))
     {
-        strcat(sequence, sequence_itNext());
+        strcat(sequence, sequence_itNext(seq));
         strcat(sequence, " ");
     }
     return sequence; // Retourne la chaîne construite

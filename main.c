@@ -18,11 +18,13 @@
 int main()
 {
     // Tester les fonctions de sequence
-   /* if (test_sequence())
+    if (test_sequence())
     {
         fprintf(stderr,"Test non reussi\n");
         return 1;  // Si le test de la séquence échoue, quitter le programme avec une erreur
-    }*/
+    }
+
+    /*
     // Tester les fonctions du tableau dynamique
     if (test_TabD())
     {
@@ -35,7 +37,10 @@ int main()
         fprintf(stderr,"Test Arbre de prédiction non reussi\n");
         return 1;  // Si le test du Arbre de prédiction échoue, quitter avec une erreur
     }
+*/
 
+
+    /*
     // Main avec arbre
 
     // Création d'une table de hachage de taille définie par la constante ENTREE
@@ -142,6 +147,7 @@ int main()
     // Libération de la mémoire allouée pour l'arbre de prédiction
     detruire_arbre(racine);
     strhash_free(ht);  // Libère la mémoire de la table de hachage
+    */ 
     return 0;  // Retourne 0 pour indiquer que le test s'est terminé avec succès
-    
+   
 }

@@ -1,0 +1,20 @@
+# Ignorer certains fichiers objets
+sequence.o
+error.o
+tableau_dyn.o
+arbre_prediction.o
+test.o
+tableau_dyn.h.gch
+arbre_prediction.h.gch
+program
+test_seq
+
+# Ignorer fichiers temporaires IDE
+*.swp
+*.swo
+.vscode/
+*.exe
+
+# Ignorer dossiers de compilation
+/build/
+/bin/
