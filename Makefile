@@ -33,7 +33,7 @@ TARGET := main
 # Collect all .c files in the current directory, excluding standalone
 # test/example files that define their own main() and must not be
 # linked into the main binary
-SRC := $(filter-out test_hash_exemple.c, $(wildcard *.c))
+SRC := $(filter-out test_hash.c, $(wildcard *.c))
 
 # Derive object file names from source file names (.c -> .o)
 OBJ := $(SRC:.c=.o)
