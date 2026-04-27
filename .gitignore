@@ -8,6 +8,7 @@ tableau_dyn.o
 arbre_prediction.o
 test.o
 main.o
+arbre_io.o
 
 ########################################################################
 # Fichiers générés par GCC
