@@ -1,13 +1,18 @@
 /************************************************************************
-  Nom du fichier : tableau_dyn.c
-=============================================================
-  Description : Contient les fonctions du module tableau dynamique
-=============================================================
-  Auteur : Nachid Ayman
-=============================================================
-************************************************************************/
+ * File    : tableau_dyn.c
+ * =============================================================
+ * Description : Implements a generic dynamic array (growable buffer)
+ *               storing void* pointers. The array expands automatically
+ *               by a configurable growth factor whenever the capacity
+ *               is exceeded.
+ * =============================================================
+ * Author  : Nachid Ayman
+ * =============================================================
+ ************************************************************************/
 
+/* Uncomment to disable all assertions (production builds) */
 // #define NDEBUG
+
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
@@ -15,8 +20,16 @@
 #include "error.h"
 #include "tableau_dyn.h"
 
-// Initialise à NULL les cases du tableau à partir d'une position donnée
-void initialiserColonnes_Tadb(struct table_D *t, int position)
+/*
+ * initialiserColonnes_Tabd - Zero-initialize slots from @position to end of buffer
+ * @t:        Target dynamic array
+ * @position: Index of the first slot to initialize
+ *
+ * Sets every slot from @position up to taille_max - 1 to NULL.
+ * Called after allocation or reallocation to ensure no slot holds a
+ * stale (uninitialized) pointer.
+ */
+void initialiserColonnes_Tabd(struct table_D *t, int position)
 {
     if (t == NULL || t->zone == NULL)
     {
@@ -31,11 +44,18 @@ void initialiserColonnes_Tadb(struct table_D *t, int position)
     }
 }
 
-// Alloue et initialise un tableau dynamique avec une taille et un facteur de croissance
+/*
+ * creer_TabD - Allocate and initialize a dynamic array
+ * @taille_max: Initial buffer capacity (clamped to 1 if < 1)
+ * @facteur:    Multiplicative growth factor applied on each resize (must be > 0)
+ *
+ * Returns: A pointer to the new dynamic array, or NULL on invalid arguments
+ *          or allocation failure.
+ */
 struct table_D *creer_TabD(int taille_max, int facteur)
 {
-    // Vérification des arguments
-    if (facteur <= 0)
+    /* Validate growth factor before touching the heap */
+    if (facteur <= 1)
     {
         error_print(ERR_INVALID_ARGUMENT, "DYNARRAY", "Le facteur de croissance doit etre > 0");
         return NULL;
@@ -45,7 +65,7 @@ struct table_D *creer_TabD(int taille_max, int facteur)
         taille_max = 1;
     }
 
-    // Allocation de la structure
+    /* Allocate the control structure */
     struct table_D *t = malloc(sizeof(struct table_D));
     if (t == NULL)
     {
@@ -53,12 +73,12 @@ struct table_D *creer_TabD(int taille_max, int facteur)
         return NULL;
     }
 
-    // Initialisation des champs
+    /* Initialize metadata fields before allocating storage */
     t->taille = 0;
     t->taille_max = taille_max;
     t->facteur = facteur;
 
-    // Allocation de la zone de stockage
+    /* Allocate the pointer storage zone */
     t->zone = malloc(taille_max * sizeof(void *));
     if (t->zone == NULL)
     {
@@ -67,12 +87,19 @@ struct table_D *creer_TabD(int taille_max, int facteur)
         return NULL;
     }
 
-    initialiserColonnes_Tadb(t, 0);
+    initialiserColonnes_Tabd(t, 0);
 
     return t;
 }
 
-// Libère la mémoire du tableau dynamique
+/*
+ * detruire_TabD - Free all resources held by a dynamic array
+ * @t: Array to destroy; NULL is tolerated (logs a debug error)
+ *
+ * Frees the storage zone and the control structure. Fields are zeroed
+ * before freeing to catch dangling-pointer bugs early.
+ * Note: elements pointed to by the array are NOT freed here.
+ */
 void detruire_TabD(struct table_D *t)
 {
     if (t == NULL)
@@ -86,7 +113,7 @@ void detruire_TabD(struct table_D *t)
         free(t->zone);
     }
 
-    // Réinitialisation des champs avant libération
+    /* Zero fields defensively before freeing, to expose use-after-free */
     t->zone = NULL;
     t->taille = 0;
     t->taille_max = 0;
@@ -95,7 +122,15 @@ void detruire_TabD(struct table_D *t)
     free(t);
 }
 
-// Agrandit la zone mémoire jusqu'à atteindre la taille minimale requise
+/*
+ * majtaille_TabD - Grow the array's storage until it can hold at least @min elements
+ * @t:   Target dynamic array
+ * @min: Minimum required capacity after the resize
+ *
+ * Repeatedly multiplies taille_max by the growth factor until taille_max >= @min,
+ * then reallocates the storage zone accordingly. Newly created slots are
+ * initialized to NULL. On realloc failure the existing data is preserved.
+ */
 void majtaille_TabD(struct table_D *t, int min)
 {
     if (t == NULL || t->zone == NULL)
@@ -104,28 +139,38 @@ void majtaille_TabD(struct table_D *t, int min)
         return;
     }
 
-    // Multiplie la taille par le facteur jusqu'à atteindre min
+    /* Double (or multiply) until the capacity satisfies the minimum */
     while (t->taille_max < min)
     {
         t->taille_max = t->taille_max * t->facteur;
     }
 
-    // Réallocation avec la nouvelle taille
+    /* Reallocate the storage zone to the new capacity */
     void **nouvelle_zone = realloc(t->zone, t->taille_max * sizeof(void *));
     if (nouvelle_zone == NULL)
     {
         error_print(ERR_ALLOC, "DYNARRAY", "Echec de realloc de la zone memoire");
-        // t->zone est conservé pour ne pas perdre les données existantes
+        /* Keep t->zone intact to avoid losing existing data */
         return;
     }
 
     t->zone = nouvelle_zone;
 
-    // Initialisation des nouvelles cases à NULL
-    initialiserColonnes_Tadb(t, t->taille);
+    /* Initialize only the newly allocated slots (from old taille onward) */
+    initialiserColonnes_Tabd(t, t->taille);
 }
 
-// Insère un élément à la position donnée, en décalant les suivants si nécessaire
+/*
+ * ajoutElement_TabD - Insert an element at the given position, shifting if needed
+ * @t:        Target dynamic array
+ * @element:  Pointer to the element to insert
+ * @position: Index at which to insert (must be >= 0)
+ *
+ * If @position exceeds the current capacity, the array is grown first.
+ * If the slot at @position is already occupied, existing elements from
+ * @position onward are shifted right by one slot before insertion.
+ * The logical size (taille) is updated accordingly.
+ */
 void ajoutElement_TabD(struct table_D *t, void *element, int position)
 {
     if (position < 0)
@@ -134,16 +179,16 @@ void ajoutElement_TabD(struct table_D *t, void *element, int position)
         return;
     }
 
-    // Agrandissement si la position dépasse la capacité physique
+    /* Grow the buffer if the target position is beyond current capacity */
     if (position >= t->taille_max)
     {
         majtaille_TabD(t, position + 1);
     }
 
-    // Décalage vers la droite si la case est déjà occupée
+    /* Shift elements right to open a slot if the target position is occupied */
     if (position < t->taille && t->zone[position] != NULL)
     {
-        // Agrandissement si le tableau est plein
+        /* Ensure there is room for one additional element after the shift */
         if (t->taille == t->taille_max)
         {
             majtaille_TabD(t, t->taille_max + 1);
@@ -157,23 +202,39 @@ void ajoutElement_TabD(struct table_D *t, void *element, int position)
         t->taille++;
     }
 
-    // Insertion de l'élément
+    /* Write the element into the now-available slot */
     t->zone[position] = element;
 
-    // Mise à jour de la taille logique si on écrit au-delà
+    /* Extend the logical size if writing beyond the current boundary */
     if (position >= t->taille)
     {
         t->taille = position + 1;
     }
 }
 
-// Ajoute un élément en dernière position
+/*
+ * ajoutenDernier_TabD - Append an element at the end of the array
+ * @t:       Target dynamic array
+ * @element: Pointer to the element to append
+ *
+ * Convenience wrapper around ajoutElement_TabD() that always inserts
+ * at the current logical end (taille), growing the buffer if needed.
+ */
 void ajoutenDernier_TabD(struct table_D *t, void *element)
 {
     ajoutElement_TabD(t, element, t->taille);
 }
 
-// Affiche l'élément à la position donnée via une fonction de rappel
+/*
+ * AfficherElement_Tabd - Display the element at the given position via a callback
+ * @pf:       Callback function that prints a single element
+ * @t:        Source dynamic array
+ * @position: Index of the element to display
+ *
+ * Prints "NULL" if the slot exists but holds a NULL pointer.
+ * Reports an error and returns without calling @pf if @t is NULL
+ * or @position is out of bounds.
+ */
 void AfficherElement_Tabd(void (*pf)(const void *), const struct table_D *t, int position)
 {
     if (t == NULL)
@@ -198,7 +259,14 @@ void AfficherElement_Tabd(void (*pf)(const void *), const struct table_D *t, int
     }
 }
 
-// Retourne l'élément à la position donnée, ou NULL si invalide
+/*
+ * lireElement_TabD - Read the element at the given position
+ * @t:        Source dynamic array
+ * @position: Index of the element to read (must be in [0, taille))
+ *
+ * Returns: The pointer stored at @position, or NULL on error
+ *          (NULL pointer, or out-of-bounds index).
+ */
 void *lireElement_TabD(const struct table_D *t, int position)
 {
     if (t == NULL)
@@ -216,7 +284,16 @@ void *lireElement_TabD(const struct table_D *t, int position)
     return t->zone[position];
 }
 
-// Écrit un élément à la position donnée, ou l'ajoute si hors de la taille actuelle
+/*
+ * ecrireElement_TabD - Overwrite or insert an element at the given position
+ * @t:        Target dynamic array
+ * @element:  Pointer to the element to write
+ * @position: Index at which to write (must be >= 0)
+ *
+ * If @position is within the current logical size, the existing pointer
+ * is replaced directly (no shifting). If @position is at or beyond the
+ * logical size, ajoutElement_TabD() is called to grow and insert instead.
+ */
 void ecrireElement_TabD(struct table_D *t, void *element, int position)
 {
     if (t == NULL)
@@ -237,12 +314,22 @@ void ecrireElement_TabD(struct table_D *t, void *element, int position)
     }
     else
     {
-        // Remplacement de l'élément existant
+        /* Overwrite: replace the existing pointer at this slot */
         t->zone[position] = element;
     }
 }
 
-// Retourne l'index du premier élément correspondant, ou -1 si non trouvé
+/*
+ * rechercheElement_TabD - Find the first element matching a predicate
+ * @pf:      Comparison callback; must return non-zero on a match
+ * @element: Reference value passed as the second argument to @pf
+ * @t:       Array to search (scanned from index 0 to taille-1)
+ *
+ * NULL slots are skipped and never passed to @pf.
+ *
+ * Returns: The index of the first matching element, or -1 if not found
+ *          or if @t / @pf is NULL.
+ */
 int rechercheElement_TabD(int (*pf)(const void *, const void *), const void *element, const struct table_D *t)
 {
     if (t == NULL || pf == NULL)
@@ -263,4 +350,24 @@ int rechercheElement_TabD(int (*pf)(const void *, const void *), const void *ele
     }
 
     return -1;
+}
+
+/*
+ * echangerElements_TabD - Swap two elements at given indices
+ * @t:  Target dynamic array
+ * @i:  Index of first element
+ * @j:  Index of second element
+ */
+void echangerElements_TabD(struct table_D *t, int i, int j)
+{
+    if (t == NULL || i < 0 || j < 0 || i >= t->taille || j >= t->taille)
+    {
+        ERROR_DEBUG(ERR_INVALID_ARGUMENT, "echangerElements_TabD: invalid indices");
+        return;
+    }
+    
+    /* Swap the pointers at the specified positions */
+    void *tmp    = t->zone[i];
+    t->zone[i]   = t->zone[j];
+    t->zone[j]   = tmp;
 }

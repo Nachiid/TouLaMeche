@@ -17,6 +17,7 @@
 #include "sequence.h"
 #include "tableau_dyn.h"
 #include "arbre_prediction.h"
+#include "arbre_io.h"
 
 // Test du module sequence
 
@@ -78,7 +79,7 @@ int test_sequence()
 
   // Réinitialisation pour test intensif
   strhash_reset(ht);
-  sequence_detruire(seq);          // On libère l'ancienne
+  sequence_detruire(seq); // On libère l'ancienne
   seq = sequence_creer(3, ht);
 
   // Test intensif : 10 000 ajouts
@@ -123,8 +124,6 @@ int test_sequence()
   printf("Tests du module Sequence : REUSSIS\n");
   return 0;
 }
-
-
 
 // Fonction de recherche
 int rechercheInt_TabD(const void *element_recherche, const void *element_TabD)
@@ -326,146 +325,267 @@ int test_TabD()
   return 0;
 }
 
-/*
 // Test du module arbre de prediction
 int test_AP()
 {
-
-  // Création d'une table de hachage de taille définie par la constante ENTREE
+  // 1. Création de la table de hachage
   struct strhash_table *ht = strhash_create(ENTREE);
 
-  // Initialisation de la séquence avec la table de hachage
-  sequence_initialise(ht);
-  sequence_itStart(); // Démarre l'itérateur de la séquence
+  // 2. Initialisation de la séquence (Taille 3 pour "Aymen Nachid Casa")
+  // On utilise le nouveau constructeur dynamique
+  Sequence *seq = sequence_creer(3, ht);
+  if (seq == NULL)
+  {
+    fprintf(stderr, "Erreur : Impossible de créer la séquence.\n");
+    return 1;
+  }
 
-  // Ajout de plusieurs mots à la séquence et progression à chaque étape
-  sequence_addWord("Aymen", ht); // Ajoute "Aymen" à la séquence
-  sequence_progress();           // Avance dans la séquence (pour indiquer que l'ajout est fait)
+  // 3. Ajout des mots à la séquence
+  // sequence_pushWord remplace avantageusement addWord + progress
+  sequence_pushWord(seq, "Aymen", ht);
+  sequence_pushWord(seq, "Nachid", ht);
+  sequence_pushWord(seq, "Casa", ht);
 
-  sequence_addWord("Nachid", ht); // Ajoute "Nachid" à la séquence
-  sequence_progress();            // Avance dans la séquence
-
-  sequence_addWord("Casa", ht); // Ajoute "Casa" à la séquence
-  sequence_progress();          // Avance dans la séquence
-
-  // Création de l'arbre de prédiction (initialisation de la racine)
-  struct Noeud *racine = creerRacine_AP();
+  // 4. Création de l'arbre (Racine)
+  struct Noeud *racine = creerRacine_AP(ht);
   if (racine == NULL)
   {
-    fprintf(stderr, "Erreur 1: La racine est NULL.\n"); // Vérification si la racine a bien été créée
-    return 1;                                           // Retourne 1 si la racine est NULL
-  }
-  if (racine->fils->taille != 0)
-  { // Vérification si le nombre de fils de la racine est initialement 0
-    fprintf(stderr, "Erreur 2: racine->fils->taille est %d au lieu de 0.\n", racine->fils->taille);
-    return 1; // Retourne 1 si l'erreur est détectée
+    fprintf(stderr, "Erreur 1: La racine est NULL.\n");
+    sequence_detruire(seq); // Ne pas oublier de libérer ici aussi
+    return 1;
   }
 
-  // Ajout de mots au nœud racine (avec test de l'ajout)
+  // Vérification initiale des fils
+  if (racine->fils->taille != 0)
+  {
+    fprintf(stderr, "Erreur 2: racine->fils->taille est %d au lieu de 0.\n", racine->fils->taille);
+    return 1;
+  }
+
+  // Ajout de mots "manuels" au nœud racine
   ajouterMot_AP(racine, "mon");
   ajouterMot_AP(racine, "test");
   ajouterMot_AP(racine, "perso");
   ajouterMot_AP(racine, "bon");
 
   if (racine->fils->taille != 4)
-  { // Vérification que 4 mots ont bien été ajoutés sous la racine
+  {
     fprintf(stderr, "Erreur 3: racine->fils->taille est %d au lieu de 4.\n", racine->fils->taille);
-    return 1; // Retourne 1 si l'erreur est détectée
+    return 1;
   }
 
-  // Recherche de la séquence qui n'existe pas dans l'arbre (Aymen Nachid Casa)
-  struct Noeud *resultat_noeud = rechercher_completer_ngramme_AP(racine);
+  // 5. Recherche/Complétion du N-gramme
+  // On passe maintenant 'seq' en deuxième argument
+  struct Noeud *resultat_noeud = rechercher_completer_ngramme_AP(racine, seq);
+
   if (resultat_noeud == NULL)
   {
-    fprintf(stderr, "Erreur 4: Le resultat_noeud est NULL.\n"); // Vérifie si le résultat est NULL
+    fprintf(stderr, "Erreur 4: Le resultat_noeud est NULL.\n");
   }
-  if (resultat_noeud->mot == NULL)
-  {
-    fprintf(stderr, "Erreur 5: Le resultat_noeud->mot est NULL.\n"); // Vérifie si le mot du nœud trouvé est NULL
-  }
+
   if (racine->fils->taille != 5)
-  { // Vérification que racine a maintenant 5 fils au lieu de 4
+  {
     fprintf(stderr, "Erreur 6: racine->fils->taille est %d au lieu de 5.\n", racine->fils->taille);
-    return 1; // Retourne 1 si l'erreur est détectée
+    return 1;
   }
-  // Nouveau noeud ajouté
+
+  // Vérification de la structure créée dans l'arbre
   struct Noeud *nouveau_noeud = (struct Noeud *)lireElement_TabD(racine->fils, 4);
-
-  if (strcmp(nouveau_noeud->mot, "Aymen"))
+  if (strcmp(nouveau_noeud->mot, "Aymen") != 0)
   {
-    fprintf(stderr, "Erreur 7: dans rechercher_completer_ngramme_AP() - on a %s au lieu de Aymen\n", nouveau_noeud->mot);
-    return 1; // Retourne 1 si l'erreur est détectée
+    fprintf(stderr, "Erreur 7: on a %s au lieu de Aymen\n", nouveau_noeud->mot);
+    return 1;
   }
+
   struct Noeud *nouveau_noeud_niveau_2 = (struct Noeud *)lireElement_TabD(nouveau_noeud->fils, 0);
-  if (strcmp(nouveau_noeud_niveau_2->mot, "Nachid"))
+  if (strcmp(nouveau_noeud_niveau_2->mot, "Nachid") != 0)
   {
-    fprintf(stderr, "Erreur 8: dans rechercher_completer_ngramme_AP() - on a %s au lieu de Nachid\n", nouveau_noeud_niveau_2->mot);
-    return 1; // Retourne 1 si l'erreur est détectée
-  }
-  struct Noeud *nouveau_noeud_niveau_3 = (struct Noeud *)lireElement_TabD(nouveau_noeud_niveau_2->fils, 0);
-  if (strcmp(nouveau_noeud_niveau_3->mot, "Casa"))
-  {
-    fprintf(stderr, "Erreur 9: dans rechercher_completer_ngramme_AP() - on a %s au lieu de Casa\n", nouveau_noeud_niveau_3->mot);
-    return 1; // Retourne 1 si l'erreur est détectée
-  }
-  if (nouveau_noeud_niveau_3 != resultat_noeud)
-  {
-    fprintf(stderr, "Erreur 10: dans rechercher_completer_ngramme_AP() - on a le mauvais noeud final.\n");
-    return 1; // Retourne 1 si l'erreur est détectée
+    fprintf(stderr, "Erreur 8: on a %s au lieu de Nachid\n", nouveau_noeud_niveau_2->mot);
+    return 1;
   }
 
-  // Recherche 2 de la séquence existante dans l'arbre
-  struct Noeud *noeud_existant = rechercher_completer_ngramme_AP(racine); // Nouvelle recherche du N-gramme
-  if (noeud_existant == NULL)
+  struct Noeud *nouveau_noeud_niveau_3 = (struct Noeud *)lireElement_TabD(nouveau_noeud_niveau_2->fils, 0);
+  if (strcmp(nouveau_noeud_niveau_3->mot, "Casa") != 0)
   {
-    fprintf(stderr, "Erreur 11: Le noeud_existant est NULL.\n"); // Vérifie si le deuxième résultat est NULL
+    fprintf(stderr, "Erreur 9: on a %s au lieu de Casa\n", nouveau_noeud_niveau_3->mot);
+    return 1;
   }
-  if (noeud_existant->mot == NULL)
-  {
-    fprintf(stderr, "Erreur 12: Le noeud_existant->mot est NULL.\n"); // Vérifie si le mot du second nœud trouvé est NULL
-  }
-  if (strcmp(noeud_existant->mot, nouveau_noeud_niveau_3->mot))
-  {
-    fprintf(stderr, "Erreur 13: Le noeud_existant->mot est incorrect.\n"); // Vérifie si le mot du second nœud trouvé est NULL
-  }
-  // Vérification si le dernier nœud trouvé au second passage contient le pointeur du dernier noeud de la sequence
+
+  // 6. Test de recherche d'une séquence déjà existante
+  // L'itérateur de 'seq' sera réinitialisé au début de la fonction
+  struct Noeud *noeud_existant = rechercher_completer_ngramme_AP(racine, seq);
+
   if (noeud_existant != nouveau_noeud_niveau_3)
   {
-    fprintf(stderr, "Erreur 14: Erreur fonction recherche.\n"); // Si les résultats sont différents, il y a une erreur
+    fprintf(stderr, "Erreur 14: La recherche n'a pas retrouvé le nœud existant.\n");
+    return 1;
   }
 
-  // Effectuer des recherches supplémentaires pour voir si le nombre d'occurence du mot "test" est ajouté puis incrementé
+  // 7. Apprentissage de mots suivants
   rechercherMot_AP(noeud_existant, "test");
   rechercherMot_AP(noeud_existant, "test");
   rechercherMot_AP(noeud_existant, "test");
   rechercherMot_AP(noeud_existant, "test");
-
-  // Recherche du mot "Cool", qui n'est pas dans l'arbre
   rechercherMot_AP(noeud_existant, "Cool");
 
-  // Récupération et affichage du nœud ayant le plus grand nombre d'occurrences parmi les fils
-  struct Noeud *resultat_noeud3 = (struct Noeud *)lireElement_TabD(noeud_existant->fils, 0);
-
-  if (resultat_noeud3->occurrences != 4)
-  { // Vérifie si le nombre d'occurrences du mot est correct
-    fprintf(stderr, "Erreur 15: noeud_existant->occurrences, Nombre d'occurence est : %d au lieu de 4.\n", resultat_noeud3->occurrences);
-  }
-  resultat_noeud3 = (struct Noeud *)lireElement_TabD(noeud_existant->fils, 1); // Cool
-  if (resultat_noeud3->occurrences != 1)
-  { // Vérifie si le nombre d'occurrences du mot est correct
-    fprintf(stderr, "Erreur 16: noeud_existant->occurrences, Nombre d'occurence est : %d au lieu de 1.\n", resultat_noeud3->occurrences);
+  // Vérification des occurrences
+  struct Noeud *fils_test = (struct Noeud *)lireElement_TabD(noeud_existant->fils, 0);
+  if (fils_test->occurrences != 4)
+  {
+    fprintf(stderr, "Erreur 15: occurrences de 'test' : %d au lieu de 4.\n", fils_test->occurrences);
   }
 
-  // Libération de la mémoire allouée pour l'arbre de prédiction
+  // 8. Nettoyage final
   detruire_arbre(racine);
-  strhash_free(ht); // Libère la mémoire de la table de hachage
-  return 0;         // Retourne 0 pour indiquer que le test s'est terminé avec succès
+  sequence_detruire(seq); // Libération de la structure sequence
+  strhash_free(ht);
+
+  printf("Tests du module Arbre de Prédiction : REUSSIS\n");
+  return 0;
 }
 
-// Test entree sortie
-int test_E_S()
+/**
+ * TEST_IO - Test d'intégration complet du module d'entrée/sortie
+ * Retourne 0 si TOUT est parfait, 1 si une erreur est détectée.
+ */
+int test_IO()
 {
+  const char *nom_fichier = "system_test_arbre.bin";
 
-  return 0; // Retourne 0 pour indiquer que le test s'est terminé avec succès
+  // ==========================================
+  // 1. PRÉPARATION DES DONNÉES (L'ARBRE SOURCE)
+  // ==========================================
+  struct strhash_table *ht = strhash_create(5000);
+  struct Noeud *racine_orig = creerRacine_AP(ht);
+
+  if (!racine_orig)
+  {
+    fprintf(stderr, "[ERREUR 1] Impossible de créer la racine originale.\n");
+    return 1;
+  }
+
+  // On crée une structure en "Y" pour tester les embranchements
+  // Racine -> "le" -> "chat" -> "mange"
+  //                -> "chien" -> "dort"
+  const char *p_le = strhash_wordAdd(ht, "le");
+  const char *p_chat = strhash_wordAdd(ht, "chat");
+  const char *p_chien = strhash_wordAdd(ht, "chien");
+  const char *p_mange = strhash_wordAdd(ht, "mange");
+  const char *p_dort = strhash_wordAdd(ht, "dort");
+
+  // Montage de l'arbre
+  // 1. Ajout de "le" à la racine
+  ajouterMot_AP(racine_orig, p_le);
+  // On récupère le nœud "le" qui est maintenant le premier fils de la racine
+  struct Noeud *n_le = (struct Noeud *)lireElement_TabD(racine_orig->fils, 0);
+
+  // 2. Ajout de "chat" et "chien" comme fils de "le"
+  ajouterMot_AP(n_le, p_chat);
+  ajouterMot_AP(n_le, p_chien);
+
+  // On récupère les pointeurs pour descendre plus bas
+  // "chat" est à l'index 0 de n_le, "chien" à l'index 1
+  struct Noeud *n_chat = (struct Noeud *)lireElement_TabD(n_le->fils, 0);
+  struct Noeud *n_chien = (struct Noeud *)lireElement_TabD(n_le->fils, 1);
+
+  // 3. Ajout des terminaisons
+  ajouterMot_AP(n_chat, p_mange); // "mange" sous "chat"
+  ajouterMot_AP(n_chien, p_dort); // "dort" sous "chien"
+
+  // Mise à jour manuelle des occurrences pour ton test
+  n_le->occurrences = 100;
+  n_chat->occurrences = 50;
+  n_chien->occurrences = 30;
+  // Note : Les fils de n_chat et n_chien auront 1 par défaut via creerNoeud_AP
+
+  // ==========================================
+  // 2. SAUVEGARDE
+  // ==========================================
+  sauvegarder_AP(racine_orig, nom_fichier);
+
+  FILE *f_check = fopen(nom_fichier, "rb");
+  if (!f_check)
+  {
+    fprintf(stderr, "[ERREUR 2] Le fichier binaire n'a pas été généré.\n");
+    return 1;
+  }
+  fclose(f_check);
+  // ==========================================
+  // 3. CHARGEMENT
+  // ==========================================
+  struct Noeud *racine_chargee = charger_AP(nom_fichier, ht);
+  if (!racine_chargee)
+  {
+    fprintf(stderr, "[ERREUR 3] Échec du chargement de l'arbre.\n");
+    return 1;
+  }
+  // ==========================================
+  // 4. VÉRIFICATION CROISÉE (HARD TEST)
+  // ==========================================
+
+  // A. Test de la Racine
+  if (racine_chargee->mot == NULL || strcmp(racine_chargee->mot, "") != 0)
+  {
+    fprintf(stderr, "[ERREUR 4] La racine ne contient pas le mot vide.\n");
+    return 1;
+  }
+  const char *mot_vide_hache = strhash_wordAdd(ht, "");
+
+  if (racine_chargee->mot != mot_vide_hache)
+  {
+
+    fprintf(stderr, "[ERREUR 4] La racine n'utilise pas le pointeur unique du mot vide.\n");
+    return 1;
+  }
+
+  // B. Test du premier niveau ("le")
+  struct Noeud *c_le = (struct Noeud *)lireElement_TabD(racine_chargee->fils, 0);
+  if (c_le->mot != p_le || c_le->occurrences != 100)
+  {
+    fprintf(stderr, "[ERREUR 5] Données corrompues pour le mot 'le'.\n");
+    return 1;
+  }
+  // Verif adresse mémoire (doit être identique car même table de hachage)
+  if (c_le->mot != n_le->mot)
+  {
+    fprintf(stderr, "[ERREUR 6] Problème d'unicité des pointeurs (Hash Table non respectée).\n");
+    return 1;
+  }
+
+  // C. Test des embranchements ("chat" et "chien")
+  if (c_le->fils->taille != 2)
+  {
+    fprintf(stderr, "[ERREUR 7] Nombre de fils incorrect pour 'le' (%d au lieu de 2).\n", c_le->fils->taille);
+    return 1;
+  }
+
+  struct Noeud *c_chat = (struct Noeud *)lireElement_TabD(c_le->fils, 0);
+  struct Noeud *c_chien = (struct Noeud *)lireElement_TabD(c_le->fils, 1);
+
+  if (strcmp(c_chat->mot, "chat") != 0 || strcmp(c_chien->mot, "chien") != 0)
+  {
+    fprintf(stderr, "[ERREUR 8] Inversion ou corruption des fils de 'le'.\n");
+    return 1;
+  }
+
+  // D. Test de la profondeur maximale ("mange" et "dort")
+  struct Noeud *c_mange = (struct Noeud *)lireElement_TabD(c_chat->fils, 0);
+  struct Noeud *c_dort = (struct Noeud *)lireElement_TabD(c_chien->fils, 0);
+
+  if (c_mange->occurrences != 1 || c_dort->occurrences != 1)
+  {
+    fprintf(stderr, "[ERREUR 9] Erreur sur les feuilles de l'arbre.\n");
+    return 1;
+  }
+
+  // ==========================================
+  // 5. NETTOYAGE
+  // ==========================================
+  detruire_arbre(racine_orig);
+  detruire_arbre(racine_chargee);
+  strhash_free(ht);
+  remove(nom_fichier);
+
+  printf("Tests du module arbre io : REUSSIS\n");
+  return 0;
 }
-*/

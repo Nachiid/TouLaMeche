@@ -6,7 +6,7 @@
   Auteur : Nachid Ayman
 =============================================================
 ************************************************************************/
-/*
+
 #define stdin (&_iob[0])
 #define stdout (&_iob[1])
 #define stderr (&_iob[2])
@@ -38,8 +38,8 @@ extern struct _iobuf
 
 int saisieTexte(const char *fichier_texte);
 int Ajout_texte(const char *fichier_texte);
+void normaliser_mot(char *str) ;
 
 #endif /*_ENTREE_SORTIE_H*/
 
 
-*/

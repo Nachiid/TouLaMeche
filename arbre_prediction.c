@@ -2,44 +2,47 @@
   Nom du fichier : arbre_prediction.c
 =============================================================
   Description : Contient les fonctions du module d'arbre de prédiction
+                avec gestion centralisée des erreurs.
 =============================================================
   Auteur : Nachid Ayman
-=============================================================
-************************************************************************/
-/*
-// #define NDEBUG
+================================================*************/
+
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "error.h"
 #include "sequence.h"
 #include "tableau_dyn.h"
 #include "arbre_prediction.h"
 
-// Création d'un nœud
-struct Noeud *creerNoeud_AP(char *mot) {
-    // Alloue un nouveau nœud pour l'arbre
+/**
+ * creerNoeud_AP - Alloue et initialise un nouveau nœud
+ * @mot: Pointeur vers le mot (géré par la table de hachage)
+ */
+struct Noeud *creerNoeud_AP(const char *mot)
+{
+    if (mot == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Tentative de creer un noeud avec un mot NULL");
+        return NULL;
+    }
+
     struct Noeud *mon_noeud = (struct Noeud *)malloc(sizeof(struct Noeud));
-    if (mon_noeud == NULL) {
-        perror("Erreur : mon_noeud est NULL - creer_noeud_AP().\n");
+    if (mon_noeud == NULL)
+    {
+        error_print(ERR_ALLOC, "TREE", "Echec malloc structure Noeud");
         return NULL;
     }
 
-    // Vérifie que le mot n'est pas NULL
-    if (mot == NULL) {
-        perror("Erreur : mot est NULL - creer_noeud_AP().\n");
-        free(mon_noeud);
-        return NULL;
-    }
-
-    // Initialise le nœud avec le mot, les occurrences, et les fils
-    mon_noeud->mot = mot;  // Utilisation directe du pointeur mot
+    mon_noeud->mot = mot;
     mon_noeud->occurrences = 1;
-    mon_noeud->fils = creer_TabD(2, 2);  // Crée un tableau dynamique pour les fils
-
-    // Vérifie que le tableau dynamique des fils a été correctement créé
-    if (mon_noeud->fils == NULL) {
-        perror("Erreur : mon_noeud->fils est NULL - creer_noeud_AP().\n");
+    
+    // Initialisation du tableau des fils
+    mon_noeud->fils = creer_TabD(2, 2);
+    if (mon_noeud->fils == NULL)
+    {
+        // error_print est déjà géré dans creer_TabD, on nettoie juste
         free(mon_noeud);
         return NULL;
     }
@@ -47,192 +50,213 @@ struct Noeud *creerNoeud_AP(char *mot) {
     return mon_noeud;
 }
 
-// Création de la racine de l'arbre
-struct Noeud *creerRacine_AP() {
-    // Crée un nœud racine avec un mot vide
-    struct Noeud *racine = creerNoeud_AP("");  
-    return racine;
-}
-
-// Recherche ou complète un chemin N-gramme dans l'arbre
-struct Noeud *rechercher_completer_ngramme_AP(struct Noeud *racine) {
-    if (racine == NULL) {
-        perror("Erreur : racine est NULL. - rechercher_ngramme_AP()\n");
+/**
+ * creerRacine_AP - Crée la racine de l'arbre (mot vide)
+ */
+struct Noeud *creerRacine_AP(struct strhash_table *ht)
+{
+    struct Noeud *racine = (struct Noeud *)malloc(sizeof(struct Noeud));
+    if (racine == NULL)
+    {
+        error_print(ERR_ALLOC, "TREE", "Echec malloc racine");
         return NULL;
     }
 
-    struct Noeud *mon_noeud_courant = racine;  // Commence à partir de la racine
-    int index;
+    racine->mot = strhash_wordAdd(ht, "");
+    racine->occurrences = 0;
+    racine->fils = creer_TabD(5, 2);
+    
+    if (racine->fils == NULL)
+    {
+        free(racine);
+        return NULL;
+    }
 
-    // Initialise l'itérateur pour parcourir la séquence
-    sequence_itStart();
+    return racine;
+}
 
-    // Parcourt les mots du N-gramme
-    while (sequence_itHasNext()) {
-        void *mot = (void *)sequence_itNext();
+/**
+ * rechercher_completer_ngramme_AP - Navigue dans l'arbre selon une séquence
+ * et crée les nœuds manquants si nécessaire.
+ */
+struct Noeud *rechercher_completer_ngramme_AP(struct Noeud *racine, Sequence *seq)
+{
+    if (racine == NULL || seq == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Racine ou Sequence NULL dans la recherche de n-gramme");
+        return NULL;
+    }
 
-        // Recherche le mot dans les fils du nœud courant
-        index = rechercheElement_TabD(comparerMot_AP, mot, mon_noeud_courant->fils);
+    struct Noeud *noeud_courant = racine;
+    sequence_itStart(seq);
 
-        if (index != -1) {
-            // Si le mot est trouvé, passe au nœud correspondant
-            mon_noeud_courant = (struct Noeud *)lireElement_TabD(mon_noeud_courant->fils, index);
-        } else {
-            // Sinon, ajoute un nouveau nœud pour ce mot
-            ajouterMot_AP(mon_noeud_courant, mot);
+    while (sequence_itHasNext(seq))
+    {
+        const char *mot = sequence_itNext(seq);
+        int index = rechercheElement_TabD(comparerMot_AP, mot, noeud_courant->fils);
 
-            // Passe au nouveau nœud ajouté (le dernier de la liste)
-            mon_noeud_courant = (struct Noeud *)lireElement_TabD(mon_noeud_courant->fils, mon_noeud_courant->fils->taille - 1);
+        if (index != -1)
+        {
+            noeud_courant = (struct Noeud *)lireElement_TabD(noeud_courant->fils, index);
+        }
+        else
+        {
+            // Le chemin n'existe pas, on le crée
+            ajouterMot_AP(noeud_courant, mot);
+            // On se déplace sur le dernier élément ajouté
+            int dernier = noeud_courant->fils->taille - 1;
+            noeud_courant = (struct Noeud *)lireElement_TabD(noeud_courant->fils, dernier);
         }
     }
 
-    // Retourne le dernier nœud du chemin N-gramme
-    return mon_noeud_courant;
+    return noeud_courant;
 }
 
-// Ajout d'un mot au tableau des fils d'un nœud
-void ajouterMot_AP(struct Noeud *mon_noeud, char *mot) {
-    // Crée un nouveau nœud pour le mot
-    struct Noeud *nouveau_noeud = creerNoeud_AP(mot);
-    if (nouveau_noeud == NULL) {
-        perror("Erreur : nouveau_noeud est NULL - ajouterMot_AP().\n");
+/**
+ * ajouterMot_AP - Ajoute un nouveau mot comme fils d'un nœud
+ */
+void ajouterMot_AP(struct Noeud *mon_noeud, const char *mot)
+{
+    if (mon_noeud == NULL || mot == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Argument NULL dans ajouterMot_AP");
         return;
     }
 
-    // Ajoute le nœud dans le tableau dynamique des fils
-    void *noeud_generique = (void *)nouveau_noeud;
-    ajoutenDernier_TabD(mon_noeud->fils, noeud_generique);
-}
+    struct Noeud *nouveau = creerNoeud_AP(mot);
+    if (nouveau != NULL)
+    {
+        ajoutenDernier_TabD(mon_noeud->fils, nouveau);
 
-// Comparaison entre le mot d'un nœud et un mot donné
-int comparerMot_AP(const void *noeud_courant_void, const void *mot) {
-    // Cast des pointeurs génériques pour effectuer la comparaison
-    const struct Noeud *noeud_courant = (const struct Noeud *)noeud_courant_void;
-    const char *motCherche = (const char *)mot;
-
-    // Compare les chaînes de caractères des mots
-    return noeud_courant->mot == motCherche;
-}
-
-// Affichage du mot d'un nœud
-void afficherMot_AP(const void *mon_noeud) {
-    // Cast du pointeur générique en pointeur de nœud
-    const struct Noeud *mon_noeud_cast = (const struct Noeud *)mon_noeud;
-
-    // Affiche le mot ou un message si le nœud est NULL
-    if (mon_noeud_cast != NULL) {
-        printf("%s\n", mon_noeud_cast->mot);
-    } else {
-        printf("Le noeud est NULL.\n");
     }
 }
 
-// Recherche ou ajoute un mot parmi les fils d'un nœud final
-void rechercherMot_AP(struct Noeud *noeud_final, char *mot) {
-    if (noeud_final == NULL) {
-        perror("Erreur : noeud_final est NULL - rechercher_ou_ajouter_mot_feuille().\n");
+/**
+ * rechercherMot_AP - Apprentissage : incrémente ou ajoute un mot suivant
+ */
+void rechercherMot_AP(struct Noeud *noeud_final, const char *mot)
+{
+    if (noeud_final == NULL || mot == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Argument NULL dans rechercherMot_AP");
         return;
     }
 
-    if (mot == NULL) {
-        perror("Erreur : mot est NULL - rechercher_ou_ajouter_mot_feuille().\n");
-        return;
-    }
-
-    // Recherche le mot parmi les fils du nœud final
     int index = rechercheElement_TabD(comparerMot_AP, mot, noeud_final->fils);
 
-    if (index != -1) {
-        // Si le mot existe, incrémente le nombre d'occurrences
-        struct Noeud *noeud_existant = (struct Noeud *)lireElement_TabD(noeud_final->fils, index);
-        noeud_existant->occurrences++;
-    } else {
-        // Sinon, ajoute un nouveau nœud pour le mot
+    if (index != -1)
+    {
+        struct Noeud *cible = (struct Noeud *)lireElement_TabD(noeud_final->fils, index);
+        cible->occurrences++;
+        // On maintient l'ordre décroissant pour la prédiction en O(1)
+        remonterNoeud_AP(noeud_final->fils, index);
+    }
+    else
+    {
         ajouterMot_AP(noeud_final, mot);
     }
 }
 
-// Fonction pour trouver le mot avec le plus grand nombre d'occurence
-struct Noeud *MotMaxOccurrences_AP(struct Noeud *noeud_courant) {
-    if (noeud_courant == NULL) {
-        return NULL; // Si le nœud courant est NULL, on retourne NULL
+/**
+ * MotMaxOccurrences_AP - Retourne la prédiction la plus probable
+ */
+struct Noeud *MotMaxOccurrences_AP(struct Noeud *noeud_courant)
+{
+    if (noeud_courant == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "noeud_courant NULL dans MotMaxOccurrences_AP");
+        return NULL;
     }
 
-    // Si le nœud n'a pas de fils, il est considéré comme une feuille, on le retourne
-    if (noeud_courant->fils == NULL || noeud_courant->fils->taille == 0) {
-        return noeud_courant;
+    if (noeud_courant->fils == NULL || noeud_courant->fils->taille == 0)
+    {
+        return NULL;
     }
 
-    // Initialiser le nœud ayant le maximum d'occurrences avec le premier fils
-    struct Noeud *plus_grand_fils = (struct Noeud *)lireElement_TabD(noeud_courant->fils, 0);
-    if (plus_grand_fils == NULL) {
-        perror("Erreur : plus_grand_fils est NULL - MotMaxOccurrences_AP().\n");
-        return NULL; // Si le nœud courant est NULL, on retourne NULL
-    }
-    int max_occurrences = plus_grand_fils->occurrences;
-
-    // Parcourir tous les fils pour trouver le nœud avec le maximum d'occurrences
-    for (int i = 1; i < noeud_courant->fils->taille; i++) {
-        struct Noeud *prochain_fils = (struct Noeud *)lireElement_TabD(noeud_courant->fils, i);
-    if (prochain_fils == NULL) {
-        perror("Erreur : prochain_fils est NULL - MotMaxOccurrences_AP().\n");
-        return NULL; // Si le nœud courant est NULL, on retourne NULL
-    }
-        // Mettre à jour le maximum si le prochain fils a plus d'occurrences
-        if (prochain_fils->occurrences > max_occurrences) {
-            max_occurrences = prochain_fils->occurrences;
-            plus_grand_fils = prochain_fils;
-        }
-    }
-
-    // Retourner le nœud ayant le maximum d'occurrences
-    return plus_grand_fils;
+    // Grâce à remonterNoeud_AP, le maximum est toujours à l'index 0
+    return (struct Noeud *)lireElement_TabD(noeud_courant->fils, 0);
 }
 
+int comparerMot_AP(const void *noeud_v, const void *mot_v)
+{
+    const struct Noeud *noeud = (const struct Noeud *)noeud_v;
+    const char *mot_cherche = (const char *)mot_v;
+    
+    // Comparaison d'adresses car les mots viennent de la table de hachage
+    return (noeud->mot == mot_cherche);
+}
 
-
-void detruire_arbre(struct Noeud *noeud) {
-    if (noeud == NULL) {
-        return;  // Si le nœud est NULL, rien à faire
+void detruire_arbre(struct Noeud *noeud)
+{
+    if (noeud == NULL)
+    {
+        return; // free(NULL) est valide et ne provoque pas d'erreur
     }
 
-    // Libérer les fils du nœud
-    if (noeud->fils != NULL) {
-        // Parcourir tous les fils et les détruire récursivement
-        for (int i = 0; i < noeud->fils->taille; i++) {
-            struct Noeud *fils = (struct Noeud *)lireElement_TabD(noeud->fils, i);
-            detruire_arbre(fils);  // Appel récursif pour chaque fils
+    if (noeud->fils != NULL)
+    {
+        for (int i = 0; i < noeud->fils->taille; i++)
+        {
+            struct Noeud *fils_courant = (struct Noeud *)lireElement_TabD(noeud->fils, i);
+            detruire_arbre(fils_courant);
         }
-        // Libérer le tableau dynamique des fils
         detruire_TabD(noeud->fils);
     }
 
+    /* * NOTE: We do NOT free(noeud->mot) because the strings are owned 
+     * by the Hash Table, not the tree nodes :)
+     */
     noeud->mot = NULL;
-    free(noeud);  // Libérer la mémoire du nœud lui-même
+    free(noeud);
 }
 
+/**
+ * remonterNoeud_AP - Maintient le tableau des fils trié par occurrences (décroissant)
+ */
+void remonterNoeud_AP(struct table_D *fils, int index)
+{
+    if (fils == NULL) return;
 
+    while (index > 0)
+    {
+        struct Noeud *courant = (struct Noeud *)lireElement_TabD(fils, index);
+        struct Noeud *precedent = (struct Noeud *)lireElement_TabD(fils, index - 1);
 
-// Fonction récursive pour afficher l'arbre
-void afficherArbre(const struct Noeud *racine, int hauteur) {
-    if (racine == NULL) {
-        return;  // Si le nœud est NULL, on ne fait rien
+        if (courant->occurrences > precedent->occurrences)
+        {
+            // Cette fonction doit être présente dans ton module tableau_dyn
+            echangerElements_TabD(fils, index, index - 1);
+            index--;
+        }
+        else
+        {
+            break; 
+        }
     }
+}
 
-    // Affichage de l'indentation pour indiquer la hauteur dans l'arbre
-    for (int i = 0; i < hauteur; i++) {
-        printf("/");
+void afficherMot_AP(const void *noeud_v)
+{
+    const struct Noeud *n = (const struct Noeud *)noeud_v;
+    if (n != NULL && n->mot != NULL)
+    {
+        printf("%s (%d)\n", n->mot, n->occurrences);
     }
+}
 
-    // Affichage du mot du nœud actuel
+void afficherArbre(const struct Noeud *racine, int hauteur)
+{
+    if (racine == NULL) return;
+
+    for (int i = 0; i < hauteur; i++) printf("  ");
     afficherMot_AP(racine);
 
-    // Parcours récursif des fils (si le nœud a des fils)
-    for (int i = 0; i < racine->fils->taille; i++) {
-        struct Noeud *noeud_fils = (struct Noeud *)lireElement_TabD(racine->fils, i);  // Récupère chaque fils
-        afficherArbre(noeud_fils, hauteur + 1);  // Appel récursif pour afficher les sous-nœuds avec une hauteur supérieur
+    if (racine->fils != NULL)
+    {
+        for (int i = 0; i < racine->fils->taille; i++)
+        {
+            struct Noeud *f = (struct Noeud *)lireElement_TabD(racine->fils, i);
+            afficherArbre(f, hauteur + 1);
+        }
     }
 }
-
-
-*/

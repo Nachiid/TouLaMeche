@@ -33,13 +33,18 @@ int main()
         fprintf(stderr, "Test Tableau dynamique non reussi\n");
         return 1; // Si le test du tableau dynamique échoue, quitter avec une erreur
     }
-    /*
-        if (test_AP())
-        {
-            fprintf(stderr,"Test Arbre de prédiction non reussi\n");
-            return 1;  // Si le test du Arbre de prédiction échoue, quitter avec une erreur
-        }
-    */
+
+    if (test_AP())
+    {
+        fprintf(stderr, "Test Arbre de prédiction non reussi\n");
+        return 1; // Si le test du Arbre de prédiction échoue, quitter avec une erreur
+    }
+
+    if (test_IO())
+    {
+        fprintf(stderr, "Test Arbre de prédiction non reussi\n");
+        return 1; // Si le test du Arbre de prédiction échoue, quitter avec une erreur
+    }
 
     /*
     // Main avec arbre

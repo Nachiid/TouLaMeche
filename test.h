@@ -13,6 +13,7 @@
 int test_sequence();
 int test_TabD();
 int test_AP();
+int test_IO();
 
 int rechercheInt_TabD(const void *element_recherche, const void *element_TabD);
 int rechercheChar_TabD(const void *element_recherche, const void *element_TabD);

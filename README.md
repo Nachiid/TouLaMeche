@@ -1,124 +1,161 @@
-# **Projet : Test de Modules de Gestion de Séquences, Tableaux Dynamiques et Arbre de Prédiction**
+# **Project: Testing Modules for Sequence Management, Dynamic Arrays, and Prediction Tree**
 
-## **Etat : En cours de développement**
+## **Status: Under Development**
 
-Ce projet a pour objectif de tester et développer plusieurs modules en C pour gérer des structures de données complexes. Ces modules incluent la **gestion des séquences**, les **tableaux dynamiques**, et un **arbre de prédiction**. Le programme inclut des tests pour valider les fonctionnalités implémentées. 
+This project aims to test and develop several C modules for managing complex data structures. These modules include **sequence management**, **dynamic arrays**, and a **prediction tree**. The program includes tests to validate the implemented functionalities.
 
-Actuellement, le projet est encore en construction, avec deux fonctionnalités principales restant à intégrer :
-- **Module Entrées/Sorties** pour l'exécution du programme en mode terminal (saisie et sauvegarde des données).
-- **Module d'Interface Graphique (IHM)** pour un affichage interactif utilisant GTK+.
+Currently, the project is still under construction, with two main features remaining to be integrated:
+
+* **Input/Output Module** for running the program in terminal mode (data input and saving).
+* **Graphical User Interface (GUI) Module** for interactive display using GTK+.
 
 ---
 
 ## **Modules**
 
-### 1. **Module Séquence**
-**Raison de sa création :**
-Le module Séquence a été conçu pour gérer des séries de mots (séquences) tout en permettant une récupération rapide des mots précédents. Cette structure est essentielle pour des systèmes de prédiction basés sur des N-grammes.
+### 1. **Sequence Module**
 
-**Fonctionnalités :**
-- **Gestion des séquences de mots** : Stockage et manipulation de séquences N-grammes.
-- **Initialisation** : Création d'une séquence vide pour commencer.
-- **Ajout de mots** : Ajoute des mots à une séquence et les gère efficacement.
-- **Récupération du dernier mot** : Permet d'accéder au dernier mot ajouté dans la séquence.
-- **Tests de performance** : Simulation d'ajouts massifs pour évaluer la robustesse du module.
+**Purpose:**
+The Sequence module was designed to manage sequences of words while allowing fast retrieval of previous words. This structure is essential for prediction systems based on N-grams.
 
----
+**Features:**
 
-### 2. **Module Tableau Dynamique**
-**Raison de sa création :**
-Ce module a été développé pour offrir une structure de données flexible permettant d'ajuster automatiquement sa taille en fonction du nombre d'éléments ajoutés. Il est utilisé pour des besoins généraux de stockage dynamique.
-
-**Fonctionnalités :**
-- **Redimensionnement automatique** : Le tableau s'adapte lorsque sa capacité maximale est atteinte.
-- **Ajout d'éléments** : Permet d'ajouter des éléments à différentes positions dans le tableau.
-- **Recherche** : Recherche rapide des éléments par leur index.
-- **Gestion des types divers** : Supporte l'ajout d'éléments de différents types (par exemple : entiers, caractères, structures).
+* **Word sequence management**: Storage and manipulation of N-gram sequences.
+* **Initialization**: Creation of an empty sequence to start with.
+* **Adding words**: Efficiently adds words to a sequence.
+* **Retrieving the last word**: Access to the last word added to the sequence.
+* **Performance testing**: Simulation of massive insertions to evaluate module robustness.
 
 ---
 
-### 3. **Module Arbre de Prédiction**
-**Raison de sa création :**
-L'arbre de prédiction permet de gérer efficacement une base de données de mots et d'offrir des suggestions basées sur des séquences de mots (N-grammes). Ce module est au cœur du système de prédiction du programme.
+### 2. **Dynamic Array Module**
 
-**Fonctionnalités :**
-- **Initialisation de l'arbre** : Création d'un arbre de prédiction avec une racine contenant un mot vide.
-- **Ajout des mots** : Construction de l'arbre à partir d'un dictionnaire de mots ou d'une séquence d'entrées.
-- **Prédiction de mots** : Propose le mot suivant le plus probable en fonction des séquences enregistrées.
-- **Tests de performance** : Évaluation de la capacité de l'arbre à gérer de grandes bases de données.
+**Purpose:**
+This module was developed to provide a flexible data structure that automatically adjusts its size based on the number of elements added. It is used for general-purpose dynamic storage.
+
+**Features:**
+
+* **Automatic resizing**: The array adapts when its maximum capacity is reached.
+* **Adding elements**: Allows insertion of elements at different positions in the array.
+* **Search**: Fast lookup of elements by index.
+* **Handling multiple data types**: Supports adding elements of different types (e.g., integers, characters, structures).
 
 ---
 
-## **Modules en cours de développement**
+### 3. **Prediction Tree Module**
 
-1. **Module Entrées/Sorties (Terminal)**  
-   **Fonctionnalité prévue** :  
-   - Gestion de la saisie et de la sauvegarde des textes en mode terminal.  
-   - Permettre à l'utilisateur de saisir un texte mot par mot avec prédiction en temps réel via l'arbre de prédiction.
-   - Enregistrer les mots dans un fichier si la prédiction ne correspond pas.  
-   **Statut :** En cours de développement.  
+**Purpose:**
+The prediction tree efficiently manages a database of words and provides suggestions based on word sequences (N-grams). This module is the core of the program’s prediction system.
 
-2. **Module Interface Graphique (IHM)**  
-   **Fonctionnalité prévue** :  
-   - Création d'une interface graphique interactive en utilisant GTK+ et Glade.  
-   - Permettre à l'utilisateur de visualiser et manipuler les structures de données (séquences, arbres, tableaux dynamiques) avec une interface conviviale.  
-   **Statut :** En cours de conception.
+**Features:**
+
+* **Tree initialization**: Creation of a prediction tree with a root containing an empty word.
+* **Adding words**: Building the tree from a dictionary or input sequences.
+* **Word prediction**: Suggests the most probable next word based on stored sequences.
+* **Performance testing**: Evaluation of the tree’s ability to handle large datasets.
+
+---
+
+## **Modules Under Development**
+
+1. **Input/Output Module (Terminal)**
+   **Planned Features:**
+
+   * Handling user input and text saving in terminal mode.
+   * Allowing the user to input text word by word with real-time prediction using the prediction tree.
+   * Saving words to a file if the prediction does not match.
+     **Status:** Under development.
+
+2. **Graphical User Interface (GUI) Module**
+   **Planned Features:**
+
+   * Creation of an interactive graphical interface using GTK+ and Glade.
+   * Allowing users to visualize and manipulate data structures (sequences, trees, dynamic arrays) through a user-friendly interface.
+     **Status:** In design phase.
 
 ---
 
 ## **Installation**
 
-### Prérequis
-- Un compilateur C (par exemple, GCC).
-- `make` pour la gestion de la compilation (si vous utilisez un Makefile).
-- GTK+ installé (si vous voulez tester l'IHM lorsqu'elle sera implémentée).
+### Prerequisites
+
+* A C compiler (e.g., GCC).
+* `make` for build management (if using a Makefile).
+* GTK+ installed (if you want to test the GUI once implemented).
 
 ### Compilation
-1. **Cloner le projet** :
+
+1. **Clone the project**:
+
    ```bash
    git clone https://github.com/Nachiid/TouLaMeche
    ```
-2. **Compiler le projet** :
-   Si vous utilisez un Makefile :
+2. **Compile the project**:
+   If using a Makefile:
+
    ```bash
    make
    ```
-   Si vous compilez manuellement :
+
+   If compiling manually:
+
    ```bash
    gcc -o test test.c -lssl -lcrypto
    ```
-3. **Exécuter les tests** :
+3. **Run the tests**:
+
    ```bash
    ./test
    ```
 
 ---
 
-## **Structure du Projet**
+## **Project Structure**
 
-Le projet est organisé comme suit :
+The project is organized as follows:
 
-- **test.c** : Contient les tests pour valider les fonctionnalités des modules.
-- **sequence.h**, **sequence.c** : Gestion des séquences de mots (N-grammes).
-- **tableau_dyn.h**, **tableau_dyn.c** : Gestion des tableaux dynamiques.
-- **arbre_prediction.h**, **arbre_prediction.c** : Implémentation de l'arbre de prédiction.
-- **entrees_sorties.h**, **entrees_sorties.c** (en cours) : Gestion des saisies utilisateur et des fichiers.
-- **interface_gtk.h**, **interface_gtk.c** (en cours) : Création de l'IHM avec GTK+.
+* **test.c**: Contains tests to validate module functionalities.
+* **sequence.h**, **sequence.c**: Word sequence (N-gram) management.
+* **tableau_dyn.h**, **tableau_dyn.c**: Dynamic array management.
+* **arbre_prediction.h**, **arbre_prediction.c**: Prediction tree implementation.
+* **entrees_sorties.h**, **entrees_sorties.c** (in progress): User input and file handling.
+* **interface_gtk.h**, **interface_gtk.c** (in progress): GUI creation using GTK+.
 
 ---
 
 ## **Tests**
 
-Les tests incluent :
-1. **Module Séquence** : Validation des fonctionnalités de stockage et récupération des séquences.
-2. **Module Tableau Dynamique** : Tests de redimensionnement et de recherche d'éléments.
-3. **Module Arbre de Prédiction** : Tests de précision et de performance pour la prédiction des mots.
-4. **Tests intensifs** : Vérification de la robustesse avec de grandes quantités de données.
+The tests include:
 
-## **Licence**
+1. **Sequence Module**: Validation of sequence storage and retrieval features.
+2. **Dynamic Array Module**: Resizing and element lookup tests.
+3. **Prediction Tree Module**: Accuracy and performance testing for word prediction.
+4. **Stress tests**: Robustness verification with large volumes of data.
+
+---
+
+## **License**
 
 ```text
-Copyright © 2024 NACHID. All rights reserved.
+MIT License
 
-Ce projet est mis à disposition pour consultation et apprentissage. Toute modification, redistribution ou utilisation commerciale du code sans autorisation expresse de l'auteur est strictement interdite.
+Copyright (c) 2024 NACHID
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
