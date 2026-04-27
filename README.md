@@ -296,7 +296,7 @@ gcc -o test test.c sequence.c tableau_dyn.c arbre_prediction.c \
 The test suite covers all currently implemented modules:
 
 ```bash
-./test
+./main
 ```
 
 Expected output:
