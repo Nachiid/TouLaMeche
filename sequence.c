@@ -1,123 +1,272 @@
 /************************************************************************
-  Nom du fichier : sequence.c
-=============================================================
-  Description : Contient les fonctions du module sequence
-=============================================================
-  Auteur : Nachid Ayman
-=============================================================
-************************************************************************/
+ * File    : sequence.c
+ * =============================================================
+ * Description : Contains the function implementations for the
+ *               sequence module. A Sequence is a fixed-size
+ *               circular buffer of interned string pointers,
+ *               backed by a hash table for deduplication.
+ * =============================================================
+ * Author  : Nachid Ayman
+ * =============================================================
+ ************************************************************************/
 
-// #define NDEBUG  // Décommenter pour désactiver les assertions
+/* Uncomment to disable all assertions (production builds) */
+// #define NDEBUG
 
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "error.h"
 #include "hash.h"
 #include "list.h"
 #include "sequence.h"
 #include "test.h"
 
-// Tableau de séquence N-gramme de taille Lg_N_gramme + 1
-static char *N_gramme[Lg_N_gramme + 1]; 
-
-// Itérateur et position courante dans le tableau N_gramme
-static int iterateur, position;
-
-// Initialise le tableau N_gramme avec des mots vides
-void sequence_initialise(struct strhash_table *ht)
+/*
+ * sequence_creer - Allocate and initialize a new Sequence of capacity n+1
+ * @n:  Maximum number of words the sequence can hold (actual size is n+1
+ *      to distinguish full from empty in the circular buffer)
+ * @ht: Pointer to the hash table used for word interning
+ *
+ * All slots are pre-filled with the empty string ("") interned in @ht,
+ * so every slot is always a valid, non-NULL pointer.
+ *
+ * Returns: A pointer to the newly allocated Sequence, or NULL on failure.
+ */
+Sequence *sequence_creer(int n, struct strhash_table *ht)
 {
-    // Ajoute une chaîne vide à la table de hachage et récupère son adresse
-    char *adresse = strhash_wordAdd(ht, "");
-    if (adresse == NULL)
+    if (ht == NULL)
+        return NULL;
+
+    /* Allocate the Sequence structure itself */
+    Sequence *seq = malloc(sizeof(Sequence));
+    if (seq == NULL)
     {
-        perror("Erreur : création de la table strhash_wordAdd() échouée");
+        error_print(ERR_ALLOC, "SEQUENCE", "Echec malloc structure Sequence");
+        return NULL;
     }
 
-    // Initialise chaque entrée de N_gramme avec cette adresse
-    for (int i = 0; i < Lg_N_gramme + 1; i++)
+    /* Intern the empty string so all slots share the same sentinel pointer */
+    char *adresse_vide = strhash_wordAdd(ht, "");
+
+    /* Initialize fields before allocating the word array */
+    seq->taille_max = n + 1;
+    seq->position = 0;
+    seq->iterateur = 0;
+
+    /* Allocate the word pointer array */
+    seq->mots = malloc(seq->taille_max * sizeof(char *));
+    if (seq->mots == NULL)
     {
-        N_gramme[i] = adresse;
-        assert(N_gramme[i] != NULL); // Vérifie que l'initialisation a réussi
+        free(seq);
+        return NULL;
     }
 
-    position = 0; // Position initiale dans le tableau
+    /* Fill every slot with the empty-string sentinel */
+    for (int i = 0; i < seq->taille_max; i++)
+    {
+        seq->mots[i] = adresse_vide;
+    }
+
+    return seq;
 }
 
-// Initialise l'itérateur pour parcourir le tableau N_gramme
-void sequence_itStart(void)
+/*
+ * sequence_itStart - Reset the iterator to the slot just after the write head
+ * @seq: Target sequence
+ *
+ * Positions the iterator at (position + 1) % taille_max, which is the
+ * oldest entry in the circular buffer. Must be called before any
+ * sequence_itNext() / sequence_itHasNext() traversal.
+ */
+void sequence_itStart(Sequence *seq)
 {
-    iterateur = (position + 1) % (Lg_N_gramme + 1); // Positionne l'itérateur après la position courante
-    assert(iterateur < Lg_N_gramme + 1); // Vérifie que l'itérateur reste dans les limites
+    seq->iterateur = (seq->position + 1) % (seq->taille_max);
+    assert(seq->iterateur < seq->taille_max);
 }
 
-// Retourne le mot courant pointé par l'itérateur, puis avance l'itérateur
-const char *sequence_itNext(void)
+/*
+ * sequence_itNext - Return the word at the current iterator position and advance
+ * @seq: Target sequence
+ *
+ * Returns the interned string pointer at the current iterator slot, then
+ * advances the iterator by one step (wrapping around if needed).
+ * Falls back to an empty string on error rather than returning NULL,
+ * so callers can always dereference the result safely.
+ *
+ * Returns: A valid (non-NULL) string pointer, "" on error.
+ */
+const char *sequence_itNext(Sequence *seq)
 {
-    char *mot = N_gramme[iterateur];
-    iterateur = (iterateur + 1) % (Lg_N_gramme + 1); // Avance à la position suivante de manière circulaire
+    if (seq == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Tentative de lecture sur une Sequence NULL");
+        return "";
+    }
+
+    char *mot = seq->mots[seq->iterateur];
+    seq->iterateur = (seq->iterateur + 1) % (seq->taille_max);
 
     if (mot == NULL)
     {
-        perror("Erreur : affectation d'une valeur NULL au mot");
+        ERROR_DEBUG(ERR_INTERNAL, "Un pointeur NULL a ete trouve dans le tableau de mots");
+        return "";
     }
+
     return mot;
 }
 
-// Vérifie si l'itérateur a atteint la fin du tableau N_gramme
-int sequence_itHasNext(void)
+/*
+ * sequence_itHasNext - Check whether the iterator has not yet reached the write head
+ * @seq: Target sequence
+ *
+ * Returns: 1 if more words remain to be visited, 0 when the iterator
+ *          has caught up with the current write position.
+ */
+int sequence_itHasNext(Sequence *seq)
 {
-    return (iterateur != position); // Retourne 0 si l'itérateur est revenu à la position initiale
+    return (seq->iterateur != seq->position);
 }
 
-// Ajoute un nouveau mot au tableau N_gramme à la position courante
-void sequence_addWord(const char *wordi, struct strhash_table *ht)
+/*
+ * sequence_pushWord - Insert a word at the current write position and advance it
+ * @seq:   Target sequence
+ * @wordi: The word to intern and store
+ * @ht:    Hash table used for word interning
+ *
+ * Interns @wordi via the hash table (deduplicating storage), stores the
+ * resulting pointer at seq->position, then moves the write head forward
+ * circularly, overwriting the oldest entry when the buffer is full.
+ */
+void sequence_pushWord(Sequence *seq, const char *wordi, struct strhash_table *ht)
 {
-    N_gramme[position] = strhash_wordAdd(ht, wordi); // Ajoute le mot à la table de hachage
+    seq->mots[seq->position] = strhash_wordAdd(ht, wordi);
+    seq->position = (seq->position + 1) % (seq->taille_max);
+    assert(seq->position < seq->taille_max);
 }
 
-// Retourne le mot à la position courante du tableau N_gramme
-const char *sequence_nextWord(void)
+/*
+ * sequence_nextWord - Peek at the word currently at the write head (not yet overwritten)
+ * @seq: Target sequence
+ *
+ * Returns: The interned string pointer stored at the current write position.
+ *          This is the oldest word in the buffer when the buffer is full.
+ */
+const char *sequence_nextWord(Sequence *seq)
 {
-    return N_gramme[position];
+    return seq->mots[seq->position];
 }
 
-// Fait avancer la position dans le tableau N_gramme pour intégrer un nouveau mot
-void sequence_progress(void)
+/*
+ * sequence_detruire - Free all resources held by a Sequence
+ * @seq: Sequence to destroy; safe to call with NULL (logs a debug error)
+ *
+ * Frees the word pointer array, zeroes all fields defensively to catch
+ * use-after-free bugs early, then frees the Sequence structure itself.
+ * Note: the interned strings are owned by the hash table and are NOT freed here.
+ */
+void sequence_detruire(Sequence *seq)
 {
-    position = (position + 1) % (Lg_N_gramme + 1); // Avance circulairement
-    assert(position < Lg_N_gramme + 1); // Vérifie la validité de la position
-}
-
-// Affiche le contenu actuel du tableau N_gramme, séparé par des "/"
-void sequence_print(void)
-{
-    sequence_itStart(); // Initialise l'itérateur
-    const char *mot = sequence_itNext(); // Récupère le premier mot
-    printf("%s", mot);
-
-    // Parcourt et affiche les mots suivants
-    while (sequence_itHasNext())
+    if (seq == NULL)
     {
-        mot = sequence_itNext();
-        printf("/ %s", mot);
+        ERROR_DEBUG(ERR_NULL_POINTER, "sequence_detruire called with NULL pointer");
+        return;
     }
-    printf("\n"); // Nouvelle ligne après l'affichage
+
+    if (seq->mots == NULL)
+    {
+        ERROR_DEBUG(ERR_SEQUENCE, "sequence->mots is NULL, skipping free");
+    }
+    else
+    {
+        free(seq->mots);
+        seq->mots = NULL;
+    }
+
+    /* Zero out fields before freeing to aid debugging of dangling references */
+    seq->taille_max = 0;
+    seq->position = 0;
+    seq->iterateur = 0;
+
+    free(seq);
+
+    return;
 }
 
-// Construit une chaîne de caractères contenant les mots du tableau N_gramme
-char *sequence_printInTab(void)
+/*
+ * sequence_print - Print all non-empty words in the sequence to stdout
+ * @seq: Target sequence
+ *
+ * Iterates over the circular buffer from oldest to newest entry.
+ * Words that hold the empty-string sentinel (initial fill value) are
+ * silently skipped. Non-empty words are separated by " / " and the
+ * output is terminated with a newline.
+ */
+void sequence_print(Sequence *seq)
 {
-    static char sequence[256] = ""; // Tableau statique pour stocker la chaîne
-    sequence[0] = '\0'; // Réinitialise la chaîne
+    sequence_itStart(seq);
+    int premier_mot_affiche = 0;
 
-    sequence_itStart(); // Initialise l'itérateur
-
-    // Concatène chaque mot dans la chaîne avec un espace
-    while (sequence_itHasNext())
+    while (sequence_itHasNext(seq))
     {
-        strcat(sequence, sequence_itNext());
-        strcat(sequence, " ");
+        const char *mot = sequence_itNext(seq);
+
+        /* Skip empty-string sentinel slots left by initialization */
+        if (mot[0] != '\0')
+        {
+            if (premier_mot_affiche)
+            {
+                printf(" / ");
+            }
+            printf("%s", mot);
+            premier_mot_affiche = 1;
+        }
     }
-    return sequence; // Retourne la chaîne construite
+    printf("\n");
+}
+
+/*
+ * sequence_printInTab - Serialize the sequence words into a heap-allocated buffer
+ * @seq: Target sequence
+ *
+ * First pass: computes the exact length needed.
+ * Second pass: fills the allocated buffer.
+ *
+ * The caller is responsible for freeing the returned pointer.
+ *
+ * Returns: A newly allocated string, or NULL on allocation failure or NULL seq.
+ */
+char *sequence_printInTab(Sequence *seq)
+{
+    if (seq == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "sequence_printInTab called with NULL");
+        return NULL;
+    }
+
+    /* compute total required size */
+    size_t total = 1; /* for the final '\0' */
+    sequence_itStart(seq);
+    while (sequence_itHasNext(seq))
+        total += strlen(sequence_itNext(seq)) + 1; /* +1 for the space */
+
+    /* Allocation */
+    char *result = malloc(total);
+    if (result == NULL)
+    {
+        error_print(ERR_ALLOC, "SEQUENCE", "Malloc failure in sequence_printInTab");
+        return NULL;
+    }
+    result[0] = '\0';
+
+    /* filling the buffer */
+    sequence_itStart(seq);
+    while (sequence_itHasNext(seq))
+    {
+        strcat(result, sequence_itNext(seq));
+        strcat(result, " ");
+    }
+
+    return result; /* caller must free() */
 }

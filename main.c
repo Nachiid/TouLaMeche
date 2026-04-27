@@ -1,46 +1,57 @@
 /************************************************************************
   Nom du fichier : main.c
-  Description : Le main
+=============================================================
+  Description : Main
+=============================================================
   Auteur : Nachid Ayman
+=============================================================
 ************************************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "hash.h"          // Inclusion du fichier de la table de hachage
-#include "list.h"          // Inclusion du fichier de la liste
-#include "sequence.h"      // Inclusion du fichier de la séquence de mots
-#include "tableau_dyn.h"   // Inclusion du fichier de gestion du tableau dynamique
-#include "test.h"          // Inclusion du fichier de tests
+#include "hash.h"
+#include "list.h"
+#include "sequence.h"
+#include "tableau_dyn.h"
+#include "test.h"
 #include "arbre_prediction.h"
 
 int main()
 {
     // Tester les fonctions de sequence
-   /* if (test_sequence())
+    if (test_sequence())
     {
-        fprintf(stderr,"Test non reussi\n");
-        return 1;  // Si le test de la séquence échoue, quitter le programme avec une erreur
-    }*/
+        fprintf(stderr, "Test non reussi\n");
+        return 1; // Si le test de la séquence échoue, quitter le programme avec une erreur
+    }
+
     // Tester les fonctions du tableau dynamique
     if (test_TabD())
     {
-        fprintf(stderr,"Test Tableau dynamique non reussi\n");
-        return 1;  // Si le test du tableau dynamique échoue, quitter avec une erreur
+        fprintf(stderr, "Test Tableau dynamique non reussi\n");
+        return 1; // Si le test du tableau dynamique échoue, quitter avec une erreur
     }
 
     if (test_AP())
     {
-        fprintf(stderr,"Test Arbre de prédiction non reussi\n");
-        return 1;  // Si le test du Arbre de prédiction échoue, quitter avec une erreur
+        fprintf(stderr, "Test Arbre de prédiction non reussi\n");
+        return 1; // Si le test du Arbre de prédiction échoue, quitter avec une erreur
     }
 
+    if (test_IO())
+    {
+        fprintf(stderr, "Test Arbre de prédiction non reussi\n");
+        return 1; // Si le test du Arbre de prédiction échoue, quitter avec une erreur
+    }
+
+    /*
     // Main avec arbre
 
     // Création d'une table de hachage de taille définie par la constante ENTREE
     struct strhash_table *ht = strhash_create(ENTREE);
-    
+
     // Initialisation de la séquence avec la table de hachage
     sequence_initialise(ht);
     sequence_itStart();  // Démarre l'itérateur de la séquence
@@ -142,6 +153,6 @@ int main()
     // Libération de la mémoire allouée pour l'arbre de prédiction
     detruire_arbre(racine);
     strhash_free(ht);  // Libère la mémoire de la table de hachage
-    return 0;  // Retourne 0 pour indiquer que le test s'est terminé avec succès
-    
+    */
+    return 0; // Retourne 0 pour indiquer que le test s'est terminé avec succès
 }

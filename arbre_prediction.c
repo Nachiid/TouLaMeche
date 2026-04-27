@@ -1,42 +1,60 @@
 /************************************************************************
-  Nom du fichier : arbre_prediction.c
-  Description : Déclaration du module pour l'arbre de prédiction.
-  Auteur : Nachid Ayman
-************************************************************************/
+ * File    : arbre_prediction.c
+ * =============================================================
+ * Description : Implements the prediction tree module.
+ *               The tree is an N-ary trie where each path from root
+ *               to a node encodes an N-gram. Child arrays are kept
+ *               sorted in descending order of occurrence count so
+ *               that the most probable next word is always at index 0.
+ * =============================================================
+ * Author  : Nachid Ayman
+ * =============================================================
+ ************************************************************************/
 
-// #define NDEBUG
 #include <assert.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "error.h"
 #include "sequence.h"
 #include "tableau_dyn.h"
 #include "arbre_prediction.h"
 
-// Création d'un nœud
-struct Noeud *creerNoeud_AP(char *mot) {
-    // Alloue un nouveau nœud pour l'arbre
+/*
+ * creerNoeud_AP - Allocate and initialize a new tree node
+ * @mot: Interned string pointer owned by the hash table (must not be NULL)
+ *
+ * The child array is initialized with capacity 2 and a growth factor of 2,
+ * which is intentionally small since most nodes have few children.
+ * The error path from creer_TabD() is already reported internally;
+ * this function only needs to clean up the partially built node.
+ *
+ * Returns: A pointer to the new node with occurrences set to 1,
+ *          or NULL on failure.
+ */
+struct Noeud *creerNoeud_AP(const char *mot)
+{
+    if (mot == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Tentative de creer un noeud avec un mot NULL");
+        return NULL;
+    }
+
     struct Noeud *mon_noeud = (struct Noeud *)malloc(sizeof(struct Noeud));
-    if (mon_noeud == NULL) {
-        perror("Erreur : mon_noeud est NULL - creer_noeud_AP().\n");
+    if (mon_noeud == NULL)
+    {
+        error_print(ERR_ALLOC, "TREE", "Echec malloc structure Noeud");
         return NULL;
     }
 
-    // Vérifie que le mot n'est pas NULL
-    if (mot == NULL) {
-        perror("Erreur : mot est NULL - creer_noeud_AP().\n");
-        free(mon_noeud);
-        return NULL;
-    }
-
-    // Initialise le nœud avec le mot, les occurrences, et les fils
-    mon_noeud->mot = mot;  // Utilisation directe du pointeur mot
+    mon_noeud->mot = mot;
     mon_noeud->occurrences = 1;
-    mon_noeud->fils = creer_TabD(2, 2);  // Crée un tableau dynamique pour les fils
 
-    // Vérifie que le tableau dynamique des fils a été correctement créé
-    if (mon_noeud->fils == NULL) {
-        perror("Erreur : mon_noeud->fils est NULL - creer_noeud_AP().\n");
+    /* Start with a small child array; it will grow on demand */
+    mon_noeud->fils = creer_TabD(2, 2);
+    if (mon_noeud->fils == NULL)
+    {
+        /* creer_TabD already reported the error; just release the node */
         free(mon_noeud);
         return NULL;
     }
@@ -44,189 +62,289 @@ struct Noeud *creerNoeud_AP(char *mot) {
     return mon_noeud;
 }
 
-// Création de la racine de l'arbre
-struct Noeud *creerRacine_AP() {
-    // Crée un nœud racine avec un mot vide
-    struct Noeud *racine = creerNoeud_AP("");  
-    return racine;
-}
-
-// Recherche ou complète un chemin N-gramme dans l'arbre
-struct Noeud *rechercher_completer_ngramme_AP(struct Noeud *racine) {
-    if (racine == NULL) {
-        perror("Erreur : racine est NULL. - rechercher_ngramme_AP()\n");
+/*
+ * creerRacine_AP - Create and initialize the root node of the prediction tree
+ * @ht: Hash table used to intern the empty-string sentinel word
+ *
+ * The root represents the "start of sequence" context and holds the
+ * empty string as its word. Its occurrence count is set to 0 since
+ * it is never a prediction candidate itself. The child array starts
+ * with capacity 5 to accommodate the most frequent first words.
+ *
+ * Returns: A pointer to the root node, or NULL on allocation failure.
+ */
+struct Noeud *creerRacine_AP(struct strhash_table *ht)
+{
+    struct Noeud *racine = (struct Noeud *)malloc(sizeof(struct Noeud));
+    if (racine == NULL)
+    {
+        error_print(ERR_ALLOC, "TREE", "Echec malloc racine");
         return NULL;
     }
 
-    struct Noeud *mon_noeud_courant = racine;  // Commence à partir de la racine
-    int index;
+    racine->mot = strhash_wordAdd(ht, "");
+    racine->occurrences = 0;
+    racine->fils = creer_TabD(5, 2);
 
-    // Initialise l'itérateur pour parcourir la séquence
-    sequence_itStart();
+    if (racine->fils == NULL)
+    {
+        free(racine);
+        return NULL;
+    }
 
-    // Parcourt les mots du N-gramme
-    while (sequence_itHasNext()) {
-        void *mot = (void *)sequence_itNext();
+    return racine;
+}
 
-        // Recherche le mot dans les fils du nœud courant
-        index = rechercheElement_TabD(comparerMot_AP, mot, mon_noeud_courant->fils);
+/*
+ * rechercher_completer_ngramme_AP - Walk the tree along a sequence, creating missing nodes
+ * @racine: Root of the prediction tree
+ * @seq:    Sequence representing the N-gram path to follow
+ *
+ * Iterates over every word in @seq. At each step, if a matching child
+ * exists the traversal descends into it; otherwise a new child node is
+ * created on the fly. This ensures every N-gram seen during training has
+ * a corresponding path in the tree.
+ *
+ * Returns: The node reached after consuming the full sequence (i.e. the
+ *          node whose children are the valid next-word predictions), or
+ *          NULL if @racine or @seq is NULL.
+ */
+struct Noeud *rechercher_completer_ngramme_AP(struct Noeud *racine, Sequence *seq)
+{
+    if (racine == NULL || seq == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Racine ou Sequence NULL dans la recherche de n-gramme");
+        return NULL;
+    }
 
-        if (index != -1) {
-            // Si le mot est trouvé, passe au nœud correspondant
-            mon_noeud_courant = (struct Noeud *)lireElement_TabD(mon_noeud_courant->fils, index);
-        } else {
-            // Sinon, ajoute un nouveau nœud pour ce mot
-            ajouterMot_AP(mon_noeud_courant, mot);
+    struct Noeud *noeud_courant = racine;
+    sequence_itStart(seq);
 
-            // Passe au nouveau nœud ajouté (le dernier de la liste)
-            mon_noeud_courant = (struct Noeud *)lireElement_TabD(mon_noeud_courant->fils, mon_noeud_courant->fils->taille - 1);
+    while (sequence_itHasNext(seq))
+    {
+        const char *mot = sequence_itNext(seq);
+        int index = rechercheElement_TabD(comparerMot_AP, mot, noeud_courant->fils);
+
+        if (index != -1)
+        {
+            noeud_courant = (struct Noeud *)lireElement_TabD(noeud_courant->fils, index);
+        }
+        else
+        {
+            /* Path does not exist yet — extend the tree for this N-gram */
+            ajouterMot_AP(noeud_courant, mot);
+            /* The new node is always appended last */
+            int dernier = noeud_courant->fils->taille - 1;
+            noeud_courant = (struct Noeud *)lireElement_TabD(noeud_courant->fils, dernier);
         }
     }
 
-    // Retourne le dernier nœud du chemin N-gramme
-    return mon_noeud_courant;
+    return noeud_courant;
 }
 
-// Ajout d'un mot au tableau des fils d'un nœud
-void ajouterMot_AP(struct Noeud *mon_noeud, char *mot) {
-    // Crée un nouveau nœud pour le mot
-    struct Noeud *nouveau_noeud = creerNoeud_AP(mot);
-    if (nouveau_noeud == NULL) {
-        perror("Erreur : nouveau_noeud est NULL - ajouterMot_AP().\n");
+/*
+ * ajouterMot_AP - Add a new word as a child of @mon_noeud
+ * @mon_noeud: Parent node that will own the new child
+ * @mot:       Interned string to store in the new child node
+ *
+ * Creates a new node via creerNoeud_AP() and appends it to the parent's
+ * child array. If node creation fails the parent remains unchanged.
+ */
+void ajouterMot_AP(struct Noeud *mon_noeud, const char *mot)
+{
+    if (mon_noeud == NULL || mot == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Argument NULL dans ajouterMot_AP");
         return;
     }
 
-    // Ajoute le nœud dans le tableau dynamique des fils
-    void *noeud_generique = (void *)nouveau_noeud;
-    ajoutenDernier_TabD(mon_noeud->fils, noeud_generique);
-}
-
-// Comparaison entre le mot d'un nœud et un mot donné
-int comparerMot_AP(const void *noeud_courant_void, const void *mot) {
-    // Cast des pointeurs génériques pour effectuer la comparaison
-    const struct Noeud *noeud_courant = (const struct Noeud *)noeud_courant_void;
-    const char *motCherche = (const char *)mot;
-
-    // Compare les chaînes de caractères des mots
-    return noeud_courant->mot == motCherche;
-}
-
-// Affichage du mot d'un nœud
-void afficherMot_AP(const void *mon_noeud) {
-    // Cast du pointeur générique en pointeur de nœud
-    const struct Noeud *mon_noeud_cast = (const struct Noeud *)mon_noeud;
-
-    // Affiche le mot ou un message si le nœud est NULL
-    if (mon_noeud_cast != NULL) {
-        printf("%s\n", mon_noeud_cast->mot);
-    } else {
-        printf("Le noeud est NULL.\n");
+    struct Noeud *nouveau = creerNoeud_AP(mot);
+    if (nouveau != NULL)
+    {
+        ajoutenDernier_TabD(mon_noeud->fils, nouveau);
     }
 }
 
-// Recherche ou ajoute un mot parmi les fils d'un nœud final
-void rechercherMot_AP(struct Noeud *noeud_final, char *mot) {
-    if (noeud_final == NULL) {
-        perror("Erreur : noeud_final est NULL - rechercher_ou_ajouter_mot_feuille().\n");
+/*
+ * rechercherMot_AP - Record an observed next word for training (learn step)
+ * @noeud_final: Node whose children represent possible next words
+ * @mot:         The word that was observed following the current N-gram context
+ *
+ * If @mot is already a child of @noeud_final, its occurrence count is
+ * incremented and the child array is re-sorted to maintain descending
+ * order (so the best prediction stays at index 0 in O(1) lookup time).
+ * If @mot is not yet a child, a new child node is created with count 1.
+ */
+void rechercherMot_AP(struct Noeud *noeud_final, const char *mot)
+{
+    if (noeud_final == NULL || mot == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Argument NULL dans rechercherMot_AP");
         return;
     }
 
-    if (mot == NULL) {
-        perror("Erreur : mot est NULL - rechercher_ou_ajouter_mot_feuille().\n");
-        return;
-    }
-
-    // Recherche le mot parmi les fils du nœud final
     int index = rechercheElement_TabD(comparerMot_AP, mot, noeud_final->fils);
 
-    if (index != -1) {
-        // Si le mot existe, incrémente le nombre d'occurrences
-        struct Noeud *noeud_existant = (struct Noeud *)lireElement_TabD(noeud_final->fils, index);
-        noeud_existant->occurrences++;
-    } else {
-        // Sinon, ajoute un nouveau nœud pour le mot
+    if (index != -1)
+    {
+        struct Noeud *cible = (struct Noeud *)lireElement_TabD(noeud_final->fils, index);
+        cible->occurrences++;
+        /* Bubble the updated node upward to keep the array sorted (descending) */
+        remonterNoeud_AP(noeud_final->fils, index);
+    }
+    else
+    {
         ajouterMot_AP(noeud_final, mot);
     }
 }
 
-// Fonction pour trouver le mot avec le plus grand nombre d'occurence
-struct Noeud *MotMaxOccurrences_AP(struct Noeud *noeud_courant) {
-    if (noeud_courant == NULL) {
-        return NULL; // Si le nœud courant est NULL, on retourne NULL
+/*
+ * MotMaxOccurrences_AP - Return the most probable next-word prediction
+ * @noeud_courant: Node whose children are the prediction candidates
+ *
+ * Because remonterNoeud_AP() maintains the child array in descending
+ * occurrence order, the best candidate is always at index 0, making
+ * this lookup O(1).
+ *
+ * Returns: The child node with the highest occurrence count, or NULL
+ *          if @noeud_courant is NULL or has no children.
+ */
+struct Noeud *MotMaxOccurrences_AP(struct Noeud *noeud_courant)
+{
+    if (noeud_courant == NULL)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "noeud_courant NULL dans MotMaxOccurrences_AP");
+        return NULL;
     }
 
-    // Si le nœud n'a pas de fils, il est considéré comme une feuille, on le retourne
-    if (noeud_courant->fils == NULL || noeud_courant->fils->taille == 0) {
-        return noeud_courant;
+    if (noeud_courant->fils == NULL || noeud_courant->fils->taille == 0)
+    {
+        return NULL;
     }
 
-    // Initialiser le nœud ayant le maximum d'occurrences avec le premier fils
-    struct Noeud *plus_grand_fils = (struct Noeud *)lireElement_TabD(noeud_courant->fils, 0);
-    if (plus_grand_fils == NULL) {
-        perror("Erreur : plus_grand_fils est NULL - MotMaxOccurrences_AP().\n");
-        return NULL; // Si le nœud courant est NULL, on retourne NULL
-    }
-    int max_occurrences = plus_grand_fils->occurrences;
-
-    // Parcourir tous les fils pour trouver le nœud avec le maximum d'occurrences
-    for (int i = 1; i < noeud_courant->fils->taille; i++) {
-        struct Noeud *prochain_fils = (struct Noeud *)lireElement_TabD(noeud_courant->fils, i);
-    if (prochain_fils == NULL) {
-        perror("Erreur : prochain_fils est NULL - MotMaxOccurrences_AP().\n");
-        return NULL; // Si le nœud courant est NULL, on retourne NULL
-    }
-        // Mettre à jour le maximum si le prochain fils a plus d'occurrences
-        if (prochain_fils->occurrences > max_occurrences) {
-            max_occurrences = prochain_fils->occurrences;
-            plus_grand_fils = prochain_fils;
-        }
-    }
-
-    // Retourner le nœud ayant le maximum d'occurrences
-    return plus_grand_fils;
+    /* The child array is kept sorted: the highest-occurrence node is at index 0 */
+    return (struct Noeud *)lireElement_TabD(noeud_courant->fils, 0);
 }
 
+/*
+ * comparerMot_AP - Predicate for rechercheElement_TabD: match a node by word pointer
+ * @noeud_v: void* cast of a (struct Noeud*) stored in the child array
+ * @mot_v:   void* cast of the interned string pointer to look for
+ *
+ * Uses pointer equality rather than strcmp() because all strings are
+ * interned in the hash table — identical words always share the same address.
+ *
+ * Returns: 1 if the node's word pointer equals @mot_v, 0 otherwise.
+ */
+int comparerMot_AP(const void *noeud_v, const void *mot_v)
+{
+    const struct Noeud *noeud = (const struct Noeud *)noeud_v;
+    const char *mot_cherche = (const char *)mot_v;
 
+    /* Pointer comparison is valid here: interned strings are deduplicated */
+    return (noeud->mot == mot_cherche);
+}
 
-void detruire_arbre(struct Noeud *noeud) {
-    if (noeud == NULL) {
-        return;  // Si le nœud est NULL, rien à faire
+/*
+ * detruire_arbre - Recursively free a subtree rooted at @noeud
+ * @noeud: Root of the subtree to destroy (NULL is safe and returns immediately)
+ *
+ * Performs a post-order traversal: children are destroyed before their
+ * parent. The child dynamic array is freed via detruire_TabD() after all
+ * children have been recursed into.
+ *
+ * NOTE: noeud->mot is intentionally NOT freed — string ownership belongs
+ *       to the hash table, not to the tree nodes.
+ */
+void detruire_arbre(struct Noeud *noeud)
+{
+    if (noeud == NULL)
+    {
+        return;
     }
 
-    // Libérer les fils du nœud
-    if (noeud->fils != NULL) {
-        // Parcourir tous les fils et les détruire récursivement
-        for (int i = 0; i < noeud->fils->taille; i++) {
-            struct Noeud *fils = (struct Noeud *)lireElement_TabD(noeud->fils, i);
-            detruire_arbre(fils);  // Appel récursif pour chaque fils
+    if (noeud->fils != NULL)
+    {
+        for (int i = 0; i < noeud->fils->taille; i++)
+        {
+            struct Noeud *fils_courant = (struct Noeud *)lireElement_TabD(noeud->fils, i);
+            detruire_arbre(fils_courant);
         }
-        // Libérer le tableau dynamique des fils
         detruire_TabD(noeud->fils);
     }
 
+    /* Do NOT free noeud->mot: strings are owned by the hash table */
     noeud->mot = NULL;
-    free(noeud);  // Libérer la mémoire du nœud lui-même
+    free(noeud);
 }
 
+/*
+ * remonterNoeud_AP - Bubble a node up to restore descending occurrence order
+ * @fils:  Child array of the parent node
+ * @index: Position of the node whose occurrence count was just incremented
+ *
+ * Performs an insertion-sort step: swaps the node at @index with its
+ * predecessor as long as its occurrence count is strictly greater.
+ * This keeps the child array sorted so MotMaxOccurrences_AP() runs in O(1).
+ */
+void remonterNoeud_AP(struct table_D *fils, int index)
+{
+    if (fils == NULL) return;
 
+    while (index > 0)
+    {
+        struct Noeud *courant  = (struct Noeud *)lireElement_TabD(fils, index);
+        struct Noeud *precedent = (struct Noeud *)lireElement_TabD(fils, index - 1);
 
-// Fonction récursive pour afficher l'arbre
-void afficherArbre(const struct Noeud *racine, int hauteur) {
-    if (racine == NULL) {
-        return;  // Si le nœud est NULL, on ne fait rien
+        if (courant->occurrences > precedent->occurrences)
+        {
+            echangerElements_TabD(fils, index, index - 1);
+            index--;
+        }
+        else
+        {
+            break;
+        }
     }
+}
 
-    // Affichage de l'indentation pour indiquer la hauteur dans l'arbre
-    for (int i = 0; i < hauteur; i++) {
-        printf("/");
+/*
+ * afficherMot_AP - Print a node's word and occurrence count (callback-compatible)
+ * @noeud_v: void* cast of a (struct Noeud*) to display
+ *
+ * Output format: "<word> (<count>)\n"
+ * Silently does nothing if @noeud_v or its word pointer is NULL.
+ */
+void afficherMot_AP(const void *noeud_v)
+{
+    const struct Noeud *n = (const struct Noeud *)noeud_v;
+    if (n != NULL && n->mot != NULL)
+    {
+        printf("%s (%d)\n", n->mot, n->occurrences);
     }
+}
 
-    // Affichage du mot du nœud actuel
+/*
+ * afficherArbre - Recursively print the prediction tree with indentation
+ * @racine:  Root of the subtree to display
+ * @hauteur: Current depth level, used to compute the indentation (2 spaces per level)
+ *
+ * Performs a pre-order traversal: the node is printed before its children.
+ * Call with hauteur = 0 to display the full tree from the root.
+ */
+void afficherArbre(const struct Noeud *racine, int hauteur)
+{
+    if (racine == NULL) return;
+
+    for (int i = 0; i < hauteur; i++) printf("  ");
     afficherMot_AP(racine);
 
-    // Parcours récursif des fils (si le nœud a des fils)
-    for (int i = 0; i < racine->fils->taille; i++) {
-        struct Noeud *noeud_fils = (struct Noeud *)lireElement_TabD(racine->fils, i);  // Récupère chaque fils
-        afficherArbre(noeud_fils, hauteur + 1);  // Appel récursif pour afficher les sous-nœuds avec une hauteur supérieur
+    if (racine->fils != NULL)
+    {
+        for (int i = 0; i < racine->fils->taille; i++)
+        {
+            struct Noeud *f = (struct Noeud *)lireElement_TabD(racine->fils, i);
+            afficherArbre(f, hauteur + 1);
+        }
     }
 }

@@ -1,69 +1,163 @@
 /************************************************************************
-  Nom du fichier : tableau_dyn.h
-  Description : Déclaration du module pour un tableau dynamique.
-  Auteur : Nachid Ayman
-************************************************************************/
+ * File    : tableau_dyn.h
+ * =============================================================
+ * Description : Public interface for the generic dynamic array module.
+ *               Provides a growable buffer of void* pointers with a
+ *               configurable multiplicative growth factor.
+ * =============================================================
+ * Author  : Nachid Ayman
+ * =============================================================
+ ************************************************************************/
 
 #ifndef TABLEAU_DYN_H
 #define TABLEAU_DYN_H
 
-// Structure représentant un tableau dynamique
-// Elle contient un pointeur vers la zone de stockage des éléments,
-// la taille actuelle du tableau, la taille maximale, et un facteur de croissance.
+/*
+ * struct table_D - Generic dynamic array backed by a void* pointer zone
+ *
+ * Stores an ordered sequence of arbitrary pointers. The buffer grows
+ * automatically by @facteur whenever the capacity is exceeded.
+ * The array does NOT own the elements it points to; callers are
+ * responsible for managing the lifetime of stored pointers.
+ *
+ * @zone:       Heap-allocated array of void* element pointers
+ * @taille:     Current number of logically stored elements
+ * @taille_max: Current physical capacity of @zone (in number of pointers)
+ * @facteur:    Multiplicative growth factor applied on each resize (must be > 0)
+ */
 struct table_D
 {
-    void **zone;       // Pointeur vers la zone mémoire contenant les éléments du tableau
-    int taille;        // Taille actuelle du tableau (nombre d'éléments stockés)
-    int taille_max;    // Taille maximale du tableau (capacité actuelle)
-    int facteur;       // Facteur de croissance pour redimensionner le tableau
+    void **zone;    /* Storage zone holding element pointers          */
+    int taille;     /* Logical size: number of elements currently stored */
+    int taille_max; /* Physical capacity: total allocated pointer slots  */
+    int facteur;    /* Growth factor used when resizing the buffer       */
 };
 
-// Déclaration de la fonction pour créer un tableau dynamique avec une taille maximale et un facteur de croissance
-// Cette fonction alloue la mémoire pour la structure de tableau dynamique et initialise ses paramètres.
+/* -------------------------------------------------------------------
+ * Lifecycle
+ * ------------------------------------------------------------------- */
+
+/*
+ * creer_TabD - Allocate and initialize a dynamic array
+ * @taille_max: Initial buffer capacity in number of elements (clamped to 1 if < 1)
+ * @facteur:    Multiplicative growth factor for resizing (must be > 0)
+ *
+ * Returns: A pointer to the new dynamic array, or NULL on invalid
+ *          arguments or allocation failure.
+ */
 struct table_D *creer_TabD(int taille_max, int facteur);
 
-// Déclaration de la fonction pour détruire un tableau dynamique et libérer la mémoire associée
-// Cette fonction libère la mémoire allouée pour la structure et la zone de stockage du tableau.
+/*
+ * detruire_TabD - Free all resources held by a dynamic array
+ * @t: Array to destroy; NULL is tolerated (logs a debug error)
+ *
+ * Frees the storage zone and the control structure.
+ * Elements pointed to by the array are NOT freed.
+ */
 void detruire_TabD(struct table_D *t);
 
-// Déclaration de la fonction pour redimensionner le tableau dynamique (ajuster la taille maximale)
-// Cette fonction agrandit la zone mémoire du tableau si nécessaire, en utilisant le facteur de croissance.
+/* -------------------------------------------------------------------
+ * Modification
+ * ------------------------------------------------------------------- */
+
+/*
+ * majtaille_TabD - Grow the array until its capacity reaches at least @min
+ * @t:   Target dynamic array
+ * @min: Minimum required capacity after the resize
+ *
+ * Multiplies taille_max by the growth factor repeatedly until the
+ * capacity satisfies @min, then reallocates. New slots are set to NULL.
+ * On realloc failure, the existing data is preserved unchanged.
+ */
 void majtaille_TabD(struct table_D *t, int min);
 
-// Déclarations des fonctions pour ajouter des éléments au tableau dynamique
-
-// Ajoute un élément à une position spécifique dans le tableau dynamique.
-// Si la position est en dehors de la taille actuelle, le tableau est redimensionné.
+/*
+ * ajoutElement_TabD - Insert an element at @position, shifting right if needed
+ * @t:        Target dynamic array
+ * @element:  Pointer to store
+ * @position: Target index (must be >= 0); buffer is grown if needed
+ *
+ * If the slot at @position is occupied, all elements from @position
+ * onward are shifted right by one before insertion.
+ */
 void ajoutElement_TabD(struct table_D *t, void *element, int position);
 
-// Ajoute un élément à la dernière position disponible dans le tableau dynamique.
+/*
+ * ajoutenDernier_TabD - Append an element at the logical end of the array
+ * @t:       Target dynamic array
+ * @element: Pointer to append
+ *
+ * Convenience wrapper: equivalent to ajoutElement_TabD(t, element, t->taille).
+ */
 void ajoutenDernier_TabD(struct table_D *t, void *element);
 
-// Déclarations des fonctions pour lire et écrire des éléments dans le tableau dynamique
-
-// Écrit un élément à une position spécifique dans le tableau dynamique.
-// Si la position est en dehors de la taille actuelle, l'élément est ajouté à cette position.
+/*
+ * ecrireElement_TabD - Overwrite or insert an element at @position
+ * @t:        Target dynamic array
+ * @element:  Pointer to write
+ * @position: Target index (must be >= 0)
+ *
+ * If @position is within the current logical size, the existing pointer
+ * is replaced in-place (no shifting). Otherwise, ajoutElement_TabD()
+ * is called to grow and insert.
+ */
 void ecrireElement_TabD(struct table_D *t, void *element, int position);
 
-// Lit un élément à une position spécifique dans le tableau dynamique.
-// Retourne un pointeur vers l'élément ou NULL si la position est hors limites.
-void *lireElement_TabD(struct table_D *t, int position);
+/* -------------------------------------------------------------------
+ * Access
+ * ------------------------------------------------------------------- */
 
-// Déclaration de la fonction pour rechercher un élément dans le tableau dynamique
-// Cette fonction parcourt le tableau et retourne l'index de l'élément trouvé en utilisant une fonction de comparaison.
-// Si l'élément n'est pas trouvé, elle retourne -1.
-int rechercheElement_TabD(int (*pf)(const void *, const void *), void *element, struct table_D *t);
+/*
+ * lireElement_TabD - Read the element at @position
+ * @t:        Source dynamic array
+ * @position: Index to read (must be in [0, taille))
+ *
+ * Returns: The stored pointer, or NULL if @t is NULL or @position
+ *          is out of bounds.
+ */
+void *lireElement_TabD(const struct table_D *t, int position);
 
-// Déclarations des fonctions pour afficher les éléments du tableau dynamique
+/*
+ * rechercheElement_TabD - Find the first element matching a predicate
+ * @pf:      Comparison callback; must return non-zero on a match.
+ *           Receives (stored_element, @element) as arguments.
+ * @element: Reference value passed as the second argument to @pf
+ * @t:       Array to search (scanned from index 0 to taille-1)
+ *
+ * NULL slots are skipped and never passed to @pf.
+ *
+ * Returns: Index of the first match, or -1 if not found or on error.
+ */
+int rechercheElement_TabD(int (*pf)(const void *, const void *), const void *element, const struct table_D *t);
 
-// Affiche l'élément à une position spécifique du tableau.
-// Cette fonction utilise un pointeur vers une fonction d'affichage pour afficher l'élément de manière générique.
-void AfficherElement_Tabd(void (*pf)(const void *), struct table_D *t, int position);
+/* -------------------------------------------------------------------
+ * Display
+ * ------------------------------------------------------------------- */
 
-// Fonction d'affichage spécifique pour un élément de type 'char'
+/*
+ * AfficherElement_Tabd - Display the element at @position via a callback
+ * @pf:       Callback that prints one element; receives the element pointer
+ * @t:        Source dynamic array
+ * @position: Index of the element to display
+ *
+ * Prints "NULL" if the slot holds a NULL pointer.
+ * Does nothing (and logs an error) if @t is NULL or @position is out of bounds.
+ */
+void AfficherElement_Tabd(void (*pf)(const void *), const struct table_D *t, int position);
+
+/*
+ * AfficherElementChar_TabD - Print a single element cast to char*
+ * @element: Pointer to the element to print (cast internally to char*)
+ */
 void AfficherElementChar_TabD(const void *element);
 
-// Fonction d'affichage spécifique pour un élément de type 'int'
+/*
+ * AfficherElementInt_TabD - Print a single element cast to int*
+ * @element: Pointer to the element to print (dereferenced as int*)
+ */
 void AfficherElementInt_TabD(const void *element);
 
-#endif // TABLEAU_DYN_H
+
+void echangerElements_TabD(struct table_D *t, int i, int j);
+
+#endif /* TABLEAU_DYN_H */
