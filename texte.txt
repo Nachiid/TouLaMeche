@@ -1,1 +1,0 @@
-texte de ma sequence     doit etre affiché apres : 
