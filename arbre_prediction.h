@@ -16,6 +16,9 @@
 
 #include "list.h"          /* Linked-list utilities                  */
 #include "tableau_dyn.h"   /* Generic dynamic array (struct table_D) */
+#include "hash.h"             // Pour struct strhash_table
+#include "sequence.h"         // Pour Sequence
+
 
 /*
  * struct Noeud - Single node in the prediction tree

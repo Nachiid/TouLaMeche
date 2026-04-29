@@ -1,5 +1,5 @@
 ########################################################################
-# Fichiers objets du projet (mais PAS ceux fournis)
+# Fichiers objets du projet
 ########################################################################
 
 sequence.o
@@ -16,6 +16,7 @@ arbre_io.o
 
 *.d
 *.gch
+arbre.bin
 
 ########################################################################
 # Exécutables générés
@@ -26,7 +27,7 @@ program
 a.out
 
 ########################################################################
-# Fichiers temporaires éditeurs
+# Fichiers temporaires / éditeurs
 ########################################################################
 
 *.swp
@@ -35,6 +36,9 @@ a.out
 .vscode/
 .idea/
 TouLaMeche.code-workspace
+remarque.txt
+les-misérables-tome-4-pg17518.txt
+result.txt
 
 ########################################################################
 # Dossiers de build

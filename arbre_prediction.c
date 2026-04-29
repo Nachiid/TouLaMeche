@@ -111,9 +111,8 @@ struct Noeud *creerRacine_AP(struct strhash_table *ht)
  */
 struct Noeud *rechercher_completer_ngramme_AP(struct Noeud *racine, Sequence *seq)
 {
-    if (racine == NULL || seq == NULL)
-    {
-        ERROR_DEBUG(ERR_NULL_POINTER, "Racine ou Sequence NULL dans la recherche de n-gramme");
+    if (racine == NULL || seq == NULL) {
+        ERROR_DEBUG(ERR_NULL_POINTER, "Racine ou Sequence NULL");
         return NULL;
     }
 
@@ -123,19 +122,17 @@ struct Noeud *rechercher_completer_ngramme_AP(struct Noeud *racine, Sequence *se
     while (sequence_itHasNext(seq))
     {
         const char *mot = sequence_itNext(seq);
+        if (mot[0] == '\0')
+            continue;
+
         int index = rechercheElement_TabD(comparerMot_AP, mot, noeud_courant->fils);
 
-        if (index != -1)
-        {
+        if (index != -1) {
             noeud_courant = (struct Noeud *)lireElement_TabD(noeud_courant->fils, index);
-        }
-        else
-        {
-            /* Path does not exist yet — extend the tree for this N-gram */
-            ajouterMot_AP(noeud_courant, mot);
-            /* The new node is always appended last */
-            int dernier = noeud_courant->fils->taille - 1;
-            noeud_courant = (struct Noeud *)lireElement_TabD(noeud_courant->fils, dernier);
+        } else {
+            ajouterMot_AP(noeud_courant, (char *)mot);
+            int dernier_index = noeud_courant->fils->taille - 1;
+            noeud_courant = (struct Noeud *)lireElement_TabD(noeud_courant->fils, dernier_index);
         }
     }
 

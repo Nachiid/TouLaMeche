@@ -35,6 +35,8 @@ int test_AP();
 /* test_IO - Integration test for the tree serialization/deserialization module */
 int test_IO();
 
+int test_apprentissage();
+
 /* -------------------------------------------------------------------
  * Dynamic array callbacks (defined in test.c, used by test_TabD)
  *

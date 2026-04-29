@@ -24,6 +24,7 @@
 #include "tableau_dyn.h"
 #include "arbre_prediction.h"
 #include "arbre_io.h"
+#include "apprentissage.h"
 
 /* ===================================================================
  * test_sequence - Unit tests for the Sequence (circular buffer) module
@@ -54,7 +55,7 @@ int test_sequence()
     strhash_analyse(ht, &hstat);
     if (hstat.nbWord != 1U)
     {
-        fprintf(stderr, "2 - Erreur dans sequence_initialise - Mots dans la table : %d (attendu : 1)\n", hstat.nbWord);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "2 - Erreur dans sequence_initialise - Mots dans la table : %d (attendu : 1)", hstat.nbWord); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
         sequence_detruire(seq);
         strhash_free(ht);
         return 1;
@@ -64,7 +65,7 @@ int test_sequence()
     dernierMot = sequence_nextWord(seq);
     if (strcmp(dernierMot, "") != 0)
     {
-        fprintf(stderr, "3 - Erreur : le mot initial devrait être vide, reçu : [%s]\n", dernierMot);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "3 - Erreur : le mot initial devrait etre vide, recu : [%s]", dernierMot); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
         sequence_detruire(seq);
         strhash_free(ht);
         return 1;
@@ -82,7 +83,7 @@ int test_sequence()
     char *resultat = sequence_printInTab(seq);
     if (strcmp(resultat, "TEST1 TEST2 TEST3 ") != 0)
     {
-        fprintf(stderr, "4 - Erreur contenu sequence.\nAttendu : TEST1 TEST2 TEST3 \nAffiché  : %s\n", resultat);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "4 - Erreur contenu sequence. Attendu : TEST1 TEST2 TEST3  Affiche : %s", resultat); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
         sequence_detruire(seq);
         strhash_free(ht);
         return 1;
@@ -109,7 +110,7 @@ int test_sequence()
     resultat = sequence_printInTab(seq);
     if (strcmp(resultat, "TEST9997 TEST9998 TEST9999 ") != 0)
     {
-        fprintf(stderr, "6 - Erreur test intensif.\nAttendu : TEST9997 TEST9998 TEST9999 \nAffiché  : %s\n", resultat);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "6 - Erreur test intensif. Attendu : TEST9997 TEST9998 TEST9999  Affiche : %s", resultat); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
         sequence_detruire(seq);
         strhash_free(ht);
         return 1;
@@ -120,7 +121,7 @@ int test_sequence()
     strhash_analyse(ht, &hstat);
     if (hstat.nbWord != 10001)
     {
-        fprintf(stderr, "7 - Erreur : nbWord dans ht = %d (attendu : 10001)\n", hstat.nbWord);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "7 - Erreur : nbWord dans ht = %d (attendu : 10001)", hstat.nbWord); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
         sequence_detruire(seq);
         strhash_free(ht);
         return 1;
@@ -149,7 +150,7 @@ int test_sequence()
 int rechercheInt_TabD(const void *element_recherche, const void *element_TabD)
 {
     const int *val_recherche = (const int *)element_recherche;
-    const int *val_tab       = (const int *)element_TabD;
+    const int *val_tab = (const int *)element_TabD;
 
     return (*val_recherche == *val_tab) ? 1 : 0;
 }
@@ -164,7 +165,7 @@ int rechercheInt_TabD(const void *element_recherche, const void *element_TabD)
 int rechercheChar_TabD(const void *element_recherche, const void *element_TabD)
 {
     const char *val_recherche = (const char *)element_recherche;
-    const char *val_tab       = (const char *)element_TabD;
+    const char *val_tab = (const char *)element_TabD;
 
     return (strcmp(val_recherche, val_tab) == 0) ? 1 : 0;
 }
@@ -208,26 +209,26 @@ int test_TabD()
     /* Test 1: array creation must succeed */
     if (tableau1 == NULL)
     {
-        fprintf(stderr, "1 - Erreur lors du création du tableau\n");
+        ERROR_DEBUG(ERR_DYNARRAY, "1 - Erreur lors de la creation du tableau");
         return 1;
     }
 
     /* Test 2–4: verify initial field values (taille_max, taille, facteur) */
     if (tableau1->taille_max != 20)
     {
-        fprintf(stderr, "2 - La taille max du tableau est %d au lieu de 20\n", tableau1->taille_max);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "2 - La taille max du tableau est %d au lieu de 20", tableau1->taille_max); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if (tableau1->taille != 0)
     {
-        fprintf(stderr, "3 - La taille du tableau est %d au lieu de 0\n", tableau1->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "3 - La taille du tableau est %d au lieu de 0", tableau1->taille); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if (tableau1->facteur != 2)
     {
-        fprintf(stderr, "4 - Le facteur du tableau est %d au lieu de 2\n", tableau1->facteur);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "4 - Le facteur du tableau est %d au lieu de 2", tableau1->facteur); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -237,19 +238,19 @@ int test_TabD()
     majtaille_TabD(tableau1, 56);
     if (tableau1->taille_max != 80)
     {
-        fprintf(stderr, "5 - La taille max du tableau est %d au lieu de 80\n", tableau1->taille_max);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "5 - La taille max du tableau est %d au lieu de 80", tableau1->taille_max); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if (tableau1->taille != 0)
     {
-        fprintf(stderr, "6 - La taille du tableau est %d au lieu de 0\n", tableau1->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "6 - La taille du tableau est %d au lieu de 0", tableau1->taille); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if (tableau1->facteur != 2)
     {
-        fprintf(stderr, "7 - Le facteur du tableau est %d au lieu de 2\n", tableau1->facteur);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "7 - Le facteur du tableau est %d au lieu de 2", tableau1->facteur); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -262,19 +263,19 @@ int test_TabD()
 
     if (tableau1->taille != 1)
     {
-        fprintf(stderr, "8 - Probléme dans la fonction ajoutElement_TabD() -  La taille du tableau est %d au lieu de 1\n", tableau1->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "8 - Probleme dans ajoutElement_TabD() - La taille du tableau est %d au lieu de 1", tableau1->taille); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if (ptr != lireElement_TabD(tableau1, 0))
     {
-        fprintf(stderr, "9 - Probléme dans la fonction ajoutElement_TabD() -  Element pas trouvé en posistion 0 \n");
+        ERROR_DEBUG(ERR_DYNARRAY, "9 - Probleme dans ajoutElement_TabD() - Element pas trouve en position 0");
         detruire_TabD(tableau1);
         return 1;
     }
     if ((position = rechercheElement_TabD(&rechercheInt_TabD, ptr, tableau1)) != 0)
     {
-        fprintf(stderr, "10 - Probléme dans la fonction rechercheElement_TabD() - Position de l'entier 0 est %d au lieu de 0  --- Taille : %d  --- Taille_max : %d\n", position, tableau1->taille, tableau1->taille_max);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "10 - Probleme dans rechercheElement_TabD() - Position de l entier 0 est %d au lieu de 0 --- Taille : %d --- Taille_max : %d", position, tableau1->taille, tableau1->taille_max); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -285,13 +286,13 @@ int test_TabD()
 
     if (tableau1->taille != 2)
     {
-        fprintf(stderr, "11 - Probléme dans la fonction ajoutElement_TabD() - La taille du tableau est %d au lieu de 2\n", tableau1->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "11 - Probleme dans ajoutElement_TabD() - La taille du tableau est %d au lieu de 2", tableau1->taille); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if ((position = rechercheElement_TabD(&rechercheChar_TabD, ptr, tableau1)) != 1)
     {
-        fprintf(stderr, "12 - Probléme dans la fonction ajoutElement_TabD() - Position du caractere A est %d au lieu de 1\n", position);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "12 - Probleme dans ajoutElement_TabD() - Position du caractere A est %d au lieu de 1", position); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -301,7 +302,7 @@ int test_TabD()
     ajoutElement_TabD(tableau1, ptr, 3);
     if ((position = rechercheElement_TabD(&rechercheChar_TabD, ptr, tableau1)) != 3)
     {
-        fprintf(stderr, "13 - Probléme dans la fonction ajoutElement_TabD() - Position de l'entier 2 est %d au lieu de 3\n", position);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "13 - Probleme dans ajoutElement_TabD() - Position de l entier 2 est %d au lieu de 3", position); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -312,19 +313,19 @@ int test_TabD()
     ajoutElement_TabD(tableau1, ptr, 86);
     if (tableau1->taille_max != 160)
     {
-        fprintf(stderr, "14 - Probléme dans la fonction ajoutElement_TabD() - La taille max du tableau est %d au lieu de 160\n", tableau1->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "14 - Probleme dans ajoutElement_TabD() - La taille max du tableau est %d au lieu de 160", tableau1->taille); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if (tableau1->taille != 87)
     {
-        fprintf(stderr, "15 - Probléme dans la fonction ajoutElement_TabD() - La taille du tableau est %d au lieu de 87\n", tableau1->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "15 - Probleme dans ajoutElement_TabD() - La taille du tableau est %d au lieu de 87", tableau1->taille); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
     if ((position = rechercheElement_TabD(&rechercheChar_TabD, ptr, tableau1)) != 86)
     {
-        fprintf(stderr, "16 - Probléme dans la fonction ajoutElement_TabD() - Position du caractere 2 est %d au lieu de 86\n", position);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "16 - Probleme dans ajoutElement_TabD() - Position du caractere 2 est %d au lieu de 86", position); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -334,7 +335,7 @@ int test_TabD()
     ajoutenDernier_TabD(tableau1, ptr);
     if ((position = rechercheElement_TabD(&rechercheChar_TabD, ptr, tableau1)) != 87)
     {
-        fprintf(stderr, "17 - Probléme dans la fonction ajoutElement_TabD() - Position du caractere 2 est %d au lieu de 87\n", position);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "17 - Probleme dans ajoutElement_TabD() - Position du caractere 2 est %d au lieu de 87", position); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -348,13 +349,13 @@ int test_TabD()
 
     if (tableau1->zone[2] != lireElement_TabD(tableau1, 2))
     {
-        fprintf(stderr, "18 - Probléme dans la fonction ajoutenDernier_TabD() -  Element pas trouvé en position 2\n");
+        ERROR_DEBUG(ERR_DYNARRAY, "18 - Probleme dans ajoutenDernier_TabD() - Element pas trouve en position 2");
         detruire_TabD(tableau1);
         return 1;
     }
     if (tableau1->taille != t + 1)
     {
-        fprintf(stderr, "19 - Probléme dans la fonction ajoutElement_TabD() - La taille du tableau est %d au lieu de %d\n", tableau1->taille, t);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "19 - Probleme dans ajoutElement_TabD() - La taille du tableau est %d au lieu de %d", tableau1->taille, t); ERROR_DEBUG(ERR_DYNARRAY, _ebuf); }
         detruire_TabD(tableau1);
         return 1;
     }
@@ -385,20 +386,20 @@ int test_AP()
     Sequence *seq = sequence_creer(3, ht);
     if (seq == NULL)
     {
-        fprintf(stderr, "Erreur : Impossible de créer la séquence.\n");
+        ERROR_DEBUG(ERR_SEQUENCE, "Erreur : Impossible de creer la sequence");
         return 1;
     }
 
     /* --- Step 3: load the N-gram context into the sequence --- */
-    sequence_pushWord(seq, "Aymen",  ht);
+    sequence_pushWord(seq, "Aymen", ht);
     sequence_pushWord(seq, "Nachid", ht);
-    sequence_pushWord(seq, "Casa",   ht);
+    sequence_pushWord(seq, "Casa", ht);
 
     /* --- Step 4: create the tree root --- */
     struct Noeud *racine = creerRacine_AP(ht);
     if (racine == NULL)
     {
-        fprintf(stderr, "Erreur 1: La racine est NULL.\n");
+        ERROR_DEBUG(ERR_NULL_POINTER, "Erreur 1: La racine est NULL");
         sequence_detruire(seq);
         return 1;
     }
@@ -406,7 +407,7 @@ int test_AP()
     /* Error 2: freshly created root must have no children */
     if (racine->fils->taille != 0)
     {
-        fprintf(stderr, "Erreur 2: racine->fils->taille est %d au lieu de 0.\n", racine->fils->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "Erreur 2: racine->fils->taille est %d au lieu de 0", racine->fils->taille); ERROR_DEBUG(ERR_TREE, _ebuf); }
         return 1;
     }
 
@@ -419,7 +420,7 @@ int test_AP()
     /* Error 3: root must now have exactly 4 children */
     if (racine->fils->taille != 4)
     {
-        fprintf(stderr, "Erreur 3: racine->fils->taille est %d au lieu de 4.\n", racine->fils->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "Erreur 3: racine->fils->taille est %d au lieu de 4", racine->fils->taille); ERROR_DEBUG(ERR_TREE, _ebuf); }
         return 1;
     }
 
@@ -430,13 +431,13 @@ int test_AP()
 
     if (resultat_noeud == NULL)
     {
-        fprintf(stderr, "Erreur 4: Le resultat_noeud est NULL.\n");
+        ERROR_DEBUG(ERR_NULL_POINTER, "Erreur 4: Le resultat_noeud est NULL");
     }
 
     /* Error 6: root must now have 5 children (the 4 manual ones + "Aymen") */
     if (racine->fils->taille != 5)
     {
-        fprintf(stderr, "Erreur 6: racine->fils->taille est %d au lieu de 5.\n", racine->fils->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "Erreur 6: racine->fils->taille est %d au lieu de 5", racine->fils->taille); ERROR_DEBUG(ERR_TREE, _ebuf); }
         return 1;
     }
 
@@ -444,21 +445,21 @@ int test_AP()
     struct Noeud *nouveau_noeud = (struct Noeud *)lireElement_TabD(racine->fils, 4);
     if (strcmp(nouveau_noeud->mot, "Aymen") != 0)
     {
-        fprintf(stderr, "Erreur 7: on a %s au lieu de Aymen\n", nouveau_noeud->mot);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "Erreur 7: on a %s au lieu de Aymen", nouveau_noeud->mot); ERROR_DEBUG(ERR_TREE, _ebuf); }
         return 1;
     }
 
     struct Noeud *nouveau_noeud_niveau_2 = (struct Noeud *)lireElement_TabD(nouveau_noeud->fils, 0);
     if (strcmp(nouveau_noeud_niveau_2->mot, "Nachid") != 0)
     {
-        fprintf(stderr, "Erreur 8: on a %s au lieu de Nachid\n", nouveau_noeud_niveau_2->mot);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "Erreur 8: on a %s au lieu de Nachid", nouveau_noeud_niveau_2->mot); ERROR_DEBUG(ERR_TREE, _ebuf); }
         return 1;
     }
 
     struct Noeud *nouveau_noeud_niveau_3 = (struct Noeud *)lireElement_TabD(nouveau_noeud_niveau_2->fils, 0);
     if (strcmp(nouveau_noeud_niveau_3->mot, "Casa") != 0)
     {
-        fprintf(stderr, "Erreur 9: on a %s au lieu de Casa\n", nouveau_noeud_niveau_3->mot);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "Erreur 9: on a %s au lieu de Casa", nouveau_noeud_niveau_3->mot); ERROR_DEBUG(ERR_TREE, _ebuf); }
         return 1;
     }
 
@@ -468,7 +469,7 @@ int test_AP()
 
     if (noeud_existant != nouveau_noeud_niveau_3)
     {
-        fprintf(stderr, "Erreur 14: La recherche n'a pas retrouvé le nœud existant.\n");
+        ERROR_DEBUG(ERR_TREE, "Erreur 14: La recherche n a pas retrouve le noeud existant");
         return 1;
     }
 
@@ -484,7 +485,7 @@ int test_AP()
     struct Noeud *fils_test = (struct Noeud *)lireElement_TabD(noeud_existant->fils, 0);
     if (fils_test->occurrences != 4)
     {
-        fprintf(stderr, "Erreur 15: occurrences de 'test' : %d au lieu de 4.\n", fils_test->occurrences);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "Erreur 15: occurrences de test : %d au lieu de 4", fils_test->occurrences); ERROR_DEBUG(ERR_TREE, _ebuf); }
     }
 
     /* --- Teardown --- */
@@ -519,16 +520,16 @@ int test_IO()
 
     if (!racine_orig)
     {
-        fprintf(stderr, "[ERREUR 1] Impossible de créer la racine originale.\n");
+        ERROR_DEBUG(ERR_NULL_POINTER, "[ERREUR 1] Impossible de creer la racine originale");
         return 1;
     }
 
     /* Intern all words up front so pointer equality holds throughout the test */
-    const char *p_le    = strhash_wordAdd(ht, "le");
-    const char *p_chat  = strhash_wordAdd(ht, "chat");
+    const char *p_le = strhash_wordAdd(ht, "le");
+    const char *p_chat = strhash_wordAdd(ht, "chat");
     const char *p_chien = strhash_wordAdd(ht, "chien");
     const char *p_mange = strhash_wordAdd(ht, "mange");
-    const char *p_dort  = strhash_wordAdd(ht, "dort");
+    const char *p_dort = strhash_wordAdd(ht, "dort");
 
     /* Build the Y-shaped trie:
      *   root → "le" → "chat"  → "mange"
@@ -540,15 +541,15 @@ int test_IO()
     ajouterMot_AP(n_le, p_chien);
 
     /* "chat" is at index 0 of n_le, "chien" at index 1 (insertion order) */
-    struct Noeud *n_chat  = (struct Noeud *)lireElement_TabD(n_le->fils, 0);
+    struct Noeud *n_chat = (struct Noeud *)lireElement_TabD(n_le->fils, 0);
     struct Noeud *n_chien = (struct Noeud *)lireElement_TabD(n_le->fils, 1);
 
-    ajouterMot_AP(n_chat,  p_mange);
+    ajouterMot_AP(n_chat, p_mange);
     ajouterMot_AP(n_chien, p_dort);
 
     /* Set occurrence counts manually to verify they survive the round-trip */
-    n_le->occurrences    = 100;
-    n_chat->occurrences  = 50;
+    n_le->occurrences = 100;
+    n_chat->occurrences = 50;
     n_chien->occurrences = 30;
     /* Leaf nodes ("mange", "dort") keep their default count of 1 from creerNoeud_AP */
 
@@ -561,7 +562,7 @@ int test_IO()
     FILE *f_check = fopen(nom_fichier, "rb");
     if (!f_check)
     {
-        fprintf(stderr, "[ERREUR 2] Le fichier binaire n'a pas été généré.\n");
+        ERROR_DEBUG(ERR_FILE_WRITE, "[ERREUR 2] Le fichier binaire n a pas ete genere");
         return 1;
     }
     fclose(f_check);
@@ -572,7 +573,7 @@ int test_IO()
     struct Noeud *racine_chargee = charger_AP(nom_fichier, ht);
     if (!racine_chargee)
     {
-        fprintf(stderr, "[ERREUR 3] Échec du chargement de l'arbre.\n");
+        ERROR_DEBUG(ERR_FILE_READ, "[ERREUR 3] Echec du chargement de l arbre");
         return 1;
     }
 
@@ -583,7 +584,7 @@ int test_IO()
     /* Error 4a: root word must be the empty string */
     if (racine_chargee->mot == NULL || strcmp(racine_chargee->mot, "") != 0)
     {
-        fprintf(stderr, "[ERREUR 4] La racine ne contient pas le mot vide.\n");
+        ERROR_DEBUG(ERR_TREE, "[ERREUR 4] La racine ne contient pas le mot vide");
         return 1;
     }
 
@@ -592,7 +593,7 @@ int test_IO()
     const char *mot_vide_hache = strhash_wordAdd(ht, "");
     if (racine_chargee->mot != mot_vide_hache)
     {
-        fprintf(stderr, "[ERREUR 4] La racine n'utilise pas le pointeur unique du mot vide.\n");
+        ERROR_DEBUG(ERR_TREE, "[ERREUR 4] La racine n utilise pas le pointeur unique du mot vide");
         return 1;
     }
 
@@ -600,7 +601,7 @@ int test_IO()
     struct Noeud *c_le = (struct Noeud *)lireElement_TabD(racine_chargee->fils, 0);
     if (c_le->mot != p_le || c_le->occurrences != 100)
     {
-        fprintf(stderr, "[ERREUR 5] Données corrompues pour le mot 'le'.\n");
+        ERROR_DEBUG(ERR_TREE, "[ERREUR 5] Donnees corrompues pour le mot le");
         return 1;
     }
 
@@ -608,34 +609,34 @@ int test_IO()
      * hash table, so word pointers must be identical across the two trees */
     if (c_le->mot != n_le->mot)
     {
-        fprintf(stderr, "[ERREUR 6] Problème d'unicité des pointeurs (Hash Table non respectée).\n");
+        ERROR_DEBUG(ERR_TREE, "[ERREUR 6] Probleme d unicite des pointeurs (Hash Table non respectee)");
         return 1;
     }
 
     /* Error 7: "le" must have exactly 2 children ("chat" and "chien") */
     if (c_le->fils->taille != 2)
     {
-        fprintf(stderr, "[ERREUR 7] Nombre de fils incorrect pour 'le' (%d au lieu de 2).\n", c_le->fils->taille);
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "[ERREUR 7] Nombre de fils incorrect pour le (%d au lieu de 2)", c_le->fils->taille); ERROR_DEBUG(ERR_TREE, _ebuf); }
         return 1;
     }
 
-    struct Noeud *c_chat  = (struct Noeud *)lireElement_TabD(c_le->fils, 0);
+    struct Noeud *c_chat = (struct Noeud *)lireElement_TabD(c_le->fils, 0);
     struct Noeud *c_chien = (struct Noeud *)lireElement_TabD(c_le->fils, 1);
 
     /* Error 8: child order and word content must be preserved after round-trip */
     if (strcmp(c_chat->mot, "chat") != 0 || strcmp(c_chien->mot, "chien") != 0)
     {
-        fprintf(stderr, "[ERREUR 8] Inversion ou corruption des fils de 'le'.\n");
+        ERROR_DEBUG(ERR_TREE, "[ERREUR 8] Inversion ou corruption des fils de le");
         return 1;
     }
 
     /* Error 9: leaf nodes must retain their default occurrence count of 1 */
-    struct Noeud *c_mange = (struct Noeud *)lireElement_TabD(c_chat->fils,  0);
-    struct Noeud *c_dort  = (struct Noeud *)lireElement_TabD(c_chien->fils, 0);
+    struct Noeud *c_mange = (struct Noeud *)lireElement_TabD(c_chat->fils, 0);
+    struct Noeud *c_dort = (struct Noeud *)lireElement_TabD(c_chien->fils, 0);
 
     if (c_mange->occurrences != 1 || c_dort->occurrences != 1)
     {
-        fprintf(stderr, "[ERREUR 9] Erreur sur les feuilles de l'arbre.\n");
+        ERROR_DEBUG(ERR_TREE, "[ERREUR 9] Erreur sur les feuilles de l arbre");
         return 1;
     }
 
@@ -648,5 +649,320 @@ int test_IO()
     remove(nom_fichier);
 
     printf("Tests du module arbre io : REUSSIS\n");
+    return 0;
+}
+
+/* ===================================================================
+ * test_apprentissage - Unit tests for the learning (apprentissage) module
+ *
+ * Verifies all five public functions of apprentissage.c:
+ *  est_fin_de_phrase      — sentence-end detection
+ *  est_debut_de_dialogue  — dialogue-dash detection
+ *  nettoyer_mot           — token normalization
+ *  sequence_reset_manuelle — context flushing
+ *  apprendre_fichier      — full corpus ingestion pipeline
+ *
+ * Returns: 0 if all checks pass, 1 on the first failed assertion.
+ * =================================================================== */
+int test_apprentissage()
+{
+    /* ================================================================
+     * Setup: allocate the minimum resources required by the learning
+     * functions — a hash table and a context sequence.
+     * sequence_reset_manuelle() and apprendre_fichier() both need them.
+     * ================================================================ */
+    struct strhash_table *ht = strhash_create(100000);
+    Sequence *seq = sequence_creer(6, ht);
+    if (!ht || !seq)
+    {
+        ERROR_DEBUG(ERR_ALLOC, "ERR SETUP : echec d initialisation");
+        return 1;
+    }
+
+    /* ================================================================
+     * est_fin_de_phrase()
+     * ================================================================ */
+
+    /* Positive cases: each recognized sentence-ending punctuation mark */
+    if (!est_fin_de_phrase("Bonjour."))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1a : '.' non detecte");
+        return 1;
+    }
+    if (!est_fin_de_phrase("Quoi?"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1b : '?' non detecte");
+        return 1;
+    }
+    if (!est_fin_de_phrase("Stop!"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1c : '!' non detecte");
+        return 1;
+    }
+    if (!est_fin_de_phrase("Ainsi:"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1d : ':' non detecte");
+        return 1;
+    }
+    if (!est_fin_de_phrase("."))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1e : '.' seul non detecte");
+        return 1;
+    }
+
+    /* Negative cases: must not trigger on regular words, empty strings, or NULL */
+    if (est_fin_de_phrase("L'été"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1f : fausse detection sur L'ete");
+        return 1;
+    }
+    if (est_fin_de_phrase(""))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1g : fausse detection sur chaîne vide");
+        return 1;
+    }
+    if (est_fin_de_phrase(NULL))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1h : crash ou fausse detection sur NULL");
+        return 1;
+    }
+    if (est_fin_de_phrase("l'ami"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 1i : apostrophe interne confondue");
+        return 1;
+    }
+
+    /* ================================================================
+     * est_debut_de_dialogue()
+     * ================================================================ */
+
+    /* Positive cases: leading dash in various forms */
+    if (!est_debut_de_dialogue("-"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 2a : tiret seul non detecte");
+        return 1;
+    }
+    if (!est_debut_de_dialogue("- Bonjour"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 2b : tiret + espace non detecte");
+        return 1;
+    }
+    if (!est_debut_de_dialogue("-Bonjour"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 2c : tiret colle non detecte");
+        return 1;
+    }
+
+    /* Negative cases: no leading dash, empty string, NULL, or internal dash */
+    if (est_debut_de_dialogue("Bonjour"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 2d : fausse detection sur mot normal");
+        return 1;
+    }
+    if (est_debut_de_dialogue(""))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 2e : fausse detection sur chaine vide");
+        return 1;
+    }
+    if (est_debut_de_dialogue(NULL))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 2f : crash sur NULL");
+        return 1;
+    }
+    if (est_debut_de_dialogue("mot-composé"))
+    {
+        ERROR_DEBUG(ERR_INTERNAL, "ERR 2g : tiret median confondu");
+        return 1;
+    }
+
+    /* ================================================================
+     * nettoyer_mot_apprentissage()
+     * ================================================================ */
+
+    /* Uppercase → lowercase conversion */
+    char m1[64] = "Bonjour";
+    nettoyer_mot_apprentissage(m1);
+    if (strcmp(m1, "bonjour") != 0)
+    {
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 3a : minuscule echouee, recu '%s'", m1); ERROR_DEBUG(ERR_INTERNAL, _ebuf); }
+        return 1;
+    }
+
+    /* Peripheral punctuation stripped; internal apostrophe and hyphen preserved */
+    char m2[64] = "l'arbre-vert...";
+    nettoyer_mot_apprentissage(m2);
+    if (strcmp(m2, "l'arbre-vert") != 0)
+    {
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 3b : ponctuation peripherique, recu '%s'", m2); ERROR_DEBUG(ERR_INTERNAL, _ebuf); }
+        return 1;
+    }
+
+    /* Pure punctuation token → result must be the empty string */
+    char m3[64] = "---";
+    nettoyer_mot_apprentissage(m3);
+    if (strlen(m3) != 0)
+    {
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 3c : ponctuation pure non videe, recu '%s'", m3); ERROR_DEBUG(ERR_INTERNAL, _ebuf); }
+        return 1;
+    }
+
+    /* Digit characters must be retained */
+    char m4[64] = "42bis";
+    nettoyer_mot_apprentissage(m4);
+    if (strcmp(m4, "42bis") != 0)
+    {
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 3d : chiffres perdus, recu '%s'", m4); ERROR_DEBUG(ERR_INTERNAL, _ebuf); }
+        return 1;
+    }
+
+    /* Peripheral apostrophes stripped; alphanumeric core kept intact */
+    char m5[64] = "'mot'";
+    nettoyer_mot_apprentissage(m5);
+    if (strcmp(m5, "mot") != 0)
+    {
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 3e : apostrophes peripheriques non retirees, recu '%s'", m5); ERROR_DEBUG(ERR_INTERNAL, _ebuf); }
+        return 1;
+    }
+
+    /* Already clean token must pass through unchanged */
+    char m6[64] = "simple";
+    nettoyer_mot_apprentissage(m6);
+    if (strcmp(m6, "simple") != 0)
+    {
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 3f : mot propre altere, recu '%s'", m6); ERROR_DEBUG(ERR_INTERNAL, _ebuf); }
+        return 1;
+    }
+
+    /* ================================================================
+     * sequence_reset_manuelle()
+     * ================================================================ */
+
+    /* Populate the sequence with real words, then flush it */
+    sequence_pushWord(seq, "le", ht);
+    sequence_pushWord(seq, "chat", ht);
+
+    sequence_reset_manuelle(seq, ht);
+
+    /* All slots must now contain the empty-string sentinel */
+    sequence_itStart(seq);
+    int slot = 0;
+    while (sequence_itHasNext(seq))
+    {
+        const char *m = sequence_itNext(seq);
+        if (strcmp(m, "") != 0)
+        {
+            { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 4a : slot %d non remis a zero, contient '%s'", slot, m); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
+            return 1;
+        }
+        slot++;
+    }
+
+    /* Verify that exactly N=6 slots were visited (matches sequence capacity) */
+    if (slot != 6)
+    {
+        { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 4b : nombre de slots visites = %d (attendu 2)", slot); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
+        return 1;
+    }
+
+    /* Double reset must be idempotent — sequence must remain fully cleared */
+    sequence_reset_manuelle(seq, ht);
+    sequence_itStart(seq);
+    while (sequence_itHasNext(seq))
+    {
+        const char *m = sequence_itNext(seq);
+        if (strcmp(m, "") != 0)
+        {
+            { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 4c : double reset instable, contient '%s'", m); ERROR_DEBUG(ERR_SEQUENCE, _ebuf); }
+            return 1;
+        }
+    }
+
+    /* ================================================================
+     * apprendre_fichier()
+     * ================================================================ */
+
+    /* Case 1: non-existent file — must return a valid empty root, not crash */
+    sequence_reset_manuelle(seq, ht);
+    struct Noeud *racine = apprendre_fichier(ht, seq, "fichier_qui_nexiste_pas.txt");
+    if (!racine)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "ERR 5 SETUP : racine NULL");
+        return 1;
+    }
+    detruire_arbre(racine);
+
+    /* Case 2: real file with controlled content — verify tree structure */
+    FILE *tmp = fopen("_test_appr_tmp.txt", "w");
+    if (!tmp)
+    {
+        ERROR_DEBUG(ERR_FILE_OPEN, "ERR 5a : impossible de creer le fichier temporaire");
+        return 1;
+    }
+    fprintf(tmp, "le chat mange.\nle chat dort.\n");
+    fclose(tmp);
+
+    sequence_reset_manuelle(seq, ht);
+    racine = apprendre_fichier(ht, seq, "_test_appr_tmp.txt");
+    if (!racine)
+    {
+        ERROR_DEBUG(ERR_NULL_POINTER, "ERR 5b SETUP : racine NULL");
+        return 1;
+    }
+    remove("_test_appr_tmp.txt");
+
+    /* "le" must appear as a child of the root with exactly 2 occurrences */
+    int trouve_le = 0;
+    for (int i = 0; i < racine->fils->taille; i++)
+    {
+        struct Noeud *n = (struct Noeud *)lireElement_TabD(racine->fils, i);
+        if (n && strcmp(n->mot, "le") == 0)
+        {
+            trouve_le = 1;
+            if (n->occurrences != 2)
+            {
+                { char _ebuf[512]; snprintf(_ebuf, sizeof(_ebuf), "ERR 5b : occurrences de 'le' = %d (attendu 2)", n->occurrences); ERROR_DEBUG(ERR_TREE, _ebuf); }
+                return 1;
+            }
+        }
+    }
+    if (!trouve_le)
+    {
+        ERROR_DEBUG(ERR_TREE, "ERR 5c : 'le' absent de la racine apres apprentissage");
+        return 1;
+    }
+
+    /* Case 3: file containing dialogue dashes — must not crash */
+    FILE *tmp2 = fopen("_test_dial_tmp.txt", "w");
+    if (!tmp2)
+    {
+        ERROR_DEBUG(ERR_FILE_OPEN, "ERR 5d : impossible de creer le fichier temporaire");
+        return 1;
+    }
+    fprintf(tmp2, "- Bonjour.\n- Au revoir.\n");
+    fclose(tmp2);
+
+    sequence_reset_manuelle(seq, ht);
+    racine = apprendre_fichier(ht, seq, "_test_dial_tmp.txt");
+    remove("_test_dial_tmp.txt");
+
+    /* Case 4: empty file — must not crash and must return a valid root */
+    FILE *tmp3 = fopen("_test_vide_tmp.txt", "w");
+    if (tmp3)
+    {
+        fclose(tmp3);
+    }
+    sequence_reset_manuelle(seq, ht);
+    racine = apprendre_fichier(ht, seq, "_test_vide_tmp.txt");
+
+    remove("_test_vide_tmp.txt");
+
+    /* ================================================================
+     * Teardown
+     * ================================================================ */
+    detruire_arbre(racine);
+    sequence_detruire(seq);
+    strhash_free(ht);
+
+    printf("Tests du module apprentissage: RÉUSSIS\n");
     return 0;
 }
